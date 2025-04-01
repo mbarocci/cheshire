@@ -77,8 +77,11 @@ module cheshire_top_xilinx (
   `DDR3_INTF
 `endif
 
-  output logic  uart_tx_o,
-  input  logic  uart_rx_i
+  output logic  uart_tx_o_cp2108,
+  output logic  uart_tx_o_gpio,
+
+  input  logic  uart_rx_i_cp2108,
+  input  logic  uart_rx_i_gpio 
 );
 
   ///////////////////////
@@ -154,25 +157,33 @@ module cheshire_top_xilinx (
   //  VIOs  //
   ////////////
 
-  logic       vio_reset, vio_boot_mode_sel;
+  logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
   logic [1:0] boot_mode, vio_boot_mode;
   logic       sys_rst;
+
+  logic uart_tx_o, uart_rx_i;
 
 `ifdef USE_VIO
   vio i_vio (
     .clk        ( soc_clk ),
     .probe_out0 ( vio_reset         ),
     .probe_out1 ( vio_boot_mode     ),
-    .probe_out2 ( vio_boot_mode_sel )
+    .probe_out2 ( vio_boot_mode_sel ),
+    .probe_out3 ( vio_uart_sel  )
   );
 `else
   assign vio_reset          = '0;
   assign vio_boot_mode      = '0;
   assign vio_boot_mode_sel  = '0;
+  assign vio_uart_out_sel   = '0;
 `endif
 
   assign sys_rst = ~sys_resetn | vio_reset;
   assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
+  
+  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
+  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
+  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
 
   //////////////////
   //  Reset Sync  //

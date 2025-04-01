@@ -18,18 +18,27 @@ CHS_XILINX_DIR ?= $(CHS_ROOT)/target/xilinx
 # Xilinx IPs #
 ##############
 
-.PRECIOUS: $(CHS_XILINX_DIR)/build/%/ $(CHS_XILINX_DIR)/build/%/out.xci
+#.PRECIOUS: $(CHS_XILINX_DIR)/build/%/ $(CHS_XILINX_DIR)/build/%/out.xci
 
-$(CHS_XILINX_DIR)/build/%/:
-	mkdir -p $@
+#$(CHS_XILINX_DIR)/build/%/:
+#	mkdir -p $@
 
 # We split the stem into a board and an IP and resolve dependencies accordingly
+#$(CHS_XILINX_DIR)/build/%/out.xci: \
+#		$(CHS_XILINX_DIR)/scripts/impl_ip.tcl \
+#		$$(wildcard $(CHS_XILINX_DIR)/src/ips/$$*.prj) \
+#		| $(CHS_XILINX_DIR)/build/%/
+#	@rm -f $(CHS_XILINX_DIR)/build/$(*)*.log $(CHS_XILINX_DIR)/build/$(*)*.jou
+#	cd $| && $(VIVADO) -mode batch -log ../$*.log -jou ../$*.jou -source $< -tclargs "$(subst .," ",$*)"
+
 $(CHS_XILINX_DIR)/build/%/out.xci: \
 		$(CHS_XILINX_DIR)/scripts/impl_ip.tcl \
 		$$(wildcard $(CHS_XILINX_DIR)/src/ips/$$*.prj) \
 		| $(CHS_XILINX_DIR)/build/%/
+	@mkdir -p $(dir $@)
 	@rm -f $(CHS_XILINX_DIR)/build/$(*)*.log $(CHS_XILINX_DIR)/build/$(*)*.jou
-	cd $| && $(VIVADO) -mode batch -log ../$*.log -jou ../$*.jou -source $< -tclargs "$(subst .," ",$*)"
+	cd $(dir $@) && $(VIVADO) -mode batch -log ../$*.log -jou ../$*.jou -source $< -tclargs "$(subst .," ",$*)"
+
 
 ##############
 # Bitstreams #

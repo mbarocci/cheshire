@@ -1080,12 +1080,12 @@ set_property -dict {PACKAGE_PIN AM13 IOSTANDARD LVCMOS33} [get_ports sys_reset]
 # set_property -dict {PACKAGE_PIN E13 IOSTANDARD LVCMOS33} [get_ports uart_rx_i]
 # set_property -dict {PACKAGE_PIN F13 IOSTANDARD LVCMOS33} [get_ports uart_tx_o]
 
-set_property -dict {PACKAGE_PIN H14 IOSTANDARD LVCMOS33} [get_ports uart_rx_i]
-set_property -dict {PACKAGE_PIN J14 IOSTANDARD LVCMOS33} [get_ports uart_tx_o]
+set_property -dict {PACKAGE_PIN H14 IOSTANDARD LVCMOS33} [get_ports uart_rx_i_gpio]
+set_property -dict {PACKAGE_PIN J14 IOSTANDARD LVCMOS33} [get_ports uart_tx_o_gpio]
 
 # Map the second UART
-# set_property -dict {PACKAGE_PIN H14 IOSTANDARD LVCMOS33} [get_ports uart_rx_i_2]
-# set_property -dict {PACKAGE_PIN J14 IOSTANDARD LVCMOS33} [get_ports uart_tx_o_2]
+set_property -dict {PACKAGE_PIN E13 IOSTANDARD LVCMOS33} [get_ports uart_rx_i_cp2108]
+set_property -dict {PACKAGE_PIN F13 IOSTANDARD LVCMOS33} [get_ports uart_tx_o_cp2108]
 
 ######################################################################
 # JTAG mapping
