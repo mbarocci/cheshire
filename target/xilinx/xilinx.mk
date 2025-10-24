@@ -84,6 +84,10 @@ chs-xilinx-$(1)-%: $$(CHS_XILINX_DIR)/scripts/util/$(1).tcl | $$(CHS_XILINX_DIR)
 		-tclargs "$$(CHS_XILINX_HWS_URL) $$(or $$(CHS_XILINX_HWS_PATH_$$*),*) $$* $(subst %,$$*,$(2)) 0"
 endef
 
+chs-xilinx-clean:
+	@echo "Cleaning Xilinx build files for board '$*'..."
+	rm -rf $(CHS_XILINX_DIR)/build/$*/
+
 # Program bitstream onto board
 .PHONY: chs-xilinx-program-%
 $(eval $(call chs_xilinx_util_rule,program,$(CHS_XILINX_DIR)/out/cheshire.%.bit))
