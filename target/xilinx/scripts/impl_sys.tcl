@@ -71,5 +71,7 @@ if {![string match -nocase {*timing constraints are met*} $trep]} {
 file mkdir ${xilinx_root}/out
 file copy -force ${project_root}/${proj}.runs/impl_1/cheshire_top_xilinx.bit \
     ${xilinx_root}/out/${proj}.${board}.bit
+file copy -force ${project_root}/${proj}.gen/hw_handoff/ps.hwh \
+    ${xilinx_root}/out/${proj}.${board}.hwh
 file copy -force ${project_root}/${proj}.runs/impl_1/cheshire_top_xilinx.ltx \
     ${xilinx_root}/out/${proj}.${board}.ltx
