@@ -45,3 +45,5 @@ vivado*
 
 .Xil
 *.mif
+
+*.log

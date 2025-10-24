@@ -35,6 +35,8 @@ set_property strategy Flow_PerfOptimized_high [get_runs synth_1]
 synth_design -rtl -name rtl_1
 report_clocks -file ${project_root}/clocks.rpt
 
+source ${xilinx_root}/scripts/zcu102-mpsoc.tcl
+
 # Synthesis
 launch_runs -jobs $num_jobs synth_1
 wait_on_run synth_1
