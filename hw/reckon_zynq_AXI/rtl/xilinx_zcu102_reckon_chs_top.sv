@@ -7,7 +7,6 @@
 // Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 // Yann Picod <ypicod@ethz.ch>
 // Paul Scheffler <paulsc@iis.ee.ethz.ch>
-// Yvan Tortorella <yvan.tortorella@gmail.com>
 
 `include "cheshire/typedef.svh"
 `include "phy_definitions.svh"
@@ -15,17 +14,10 @@
 // TODO: Expose more IO: unused SPI CS, Serial Link, etc.
 
 module cheshire_top_xilinx import cheshire_pkg::*; #(
-`ifdef TARGET_VCU128
-  localparam int unsigned Ddr4CsNWidth = 2,
-  localparam int unsigned Ddr4DmDbiNWidth = 9,
-  localparam int unsigned Ddr4DqWidth = 72,
-  localparam int unsigned Ddr4DqsWidth = 9
-`else // Default to VCU118
   localparam int unsigned Ddr4CsNWidth = 1,
   localparam int unsigned Ddr4DmDbiNWidth = 8,
   localparam int unsigned Ddr4DqWidth = 64,
   localparam int unsigned Ddr4DqsWidth = 8
-`endif
 )(
   input  logic  sys_clk_p,
   input  logic  sys_clk_n,
@@ -33,14 +25,14 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `ifdef USE_RESET
   input  logic  sys_reset,
 `endif
-`ifdef USE_RESETN
-  input  logic  sys_resetn,
-`endif
+// `ifdef USE_RESETN
+//   input  logic  sys_resetn,
+// `endif
 
-`ifdef USE_SWITCHES
-  input logic       test_mode_i,
-  input logic [1:0] boot_mode_i,
-`endif
+// `ifdef USE_SWITCHES
+//   input logic       test_mode_i,
+//   input logic [1:0] boot_mode_i,
+// `endif
 
 `ifdef USE_NUM_LED
   output logic [`USE_NUM_LED-1:0] led_o,
@@ -57,7 +49,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `ifdef USE_JTAG_VDDGND
   output logic  jtag_vdd_o,
   output logic  jtag_gnd_o,
-  `endif
+`endif
 `endif
 
 `ifdef USE_I2C
@@ -73,30 +65,19 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   output logic        sd_sclk_o,
 `endif
 
-`ifdef USE_FAN
-  input  logic [3:0]  fan_sw,
-  output logic        fan_pwm,
-`endif
+// `ifdef USE_FAN
+//   input  logic [3:0]  fan_sw,
+//   output logic        fan_pwm,
+// `endif
 
-`ifdef USE_VGA
-  // VGA Colour signals
-  output logic        vga_hsync_o,
-  output logic        vga_vsync_o,
-  output logic [4:0]  vga_red_o,
-  output logic [5:0]  vga_green_o,
-  output logic [4:0]  vga_blue_o,
-`endif
-
-`ifdef USE_QSPI
-`ifndef USE_STARTUPE3
-`ifndef USE_STARTUPE2
-  // If a STARTUPE2 is present, this is wired there.
-  output wire        spih_sck_o,
-`endif
-  output wire        spih_csb_o,
-  inout  wire  [3:0] spih_sd_io,
-`endif
-`endif
+// `ifdef USE_VGA
+//   // VGA Colour signals
+//   output logic        vga_hsync_o,
+//   output logic        vga_vsync_o,
+//   output logic [4:0]  vga_red_o,
+//   output logic [5:0]  vga_green_o,
+//   output logic [4:0]  vga_blue_o,
+// `endif
 
 `ifdef USE_DDR4
   `DDR4_INTF(Ddr4CsNWidth, Ddr4DmDbiNWidth, Ddr4DqWidth, Ddr4DqsWidth)
@@ -105,25 +86,28 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   `DDR3_INTF
 `endif
 
+`ifdef USE_USB
+  inout  wire [UsbNumPorts-1:0] usb_dm_io,
+  inout  wire [UsbNumPorts-1:0] usb_dp_io,
+`endif
+
   output logic  uart_tx_o_cp2108,
   output logic  uart_tx_o_gpio,
 
   input  logic  uart_rx_i_cp2108,
-  input  logic  uart_rx_i_gpio, 
-
-  inout  wire [UsbNumPorts-1:0] usb_dm_io,
-  inout  wire [UsbNumPorts-1:0] usb_dp_io
+  input  logic  uart_rx_i_gpio
 );
 
   ///////////////////////
   //  Cheshire Config  //
   ///////////////////////
 
+  import cheshire_pkg::*;
+
   // Use default config as far as possible
   function automatic cheshire_cfg_t gen_cheshire_xilinx_cfg();
     cheshire_cfg_t ret  = DefaultCfg;
     ret.RtcFreq         = 1000000;
-    ret.SerialLink      = 0;
   `ifdef USE_USB
     ret.Usb = 1;
   `else
@@ -148,8 +132,12 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     ret.ClicNumVsctxts = 4;
     ret.ClicPrioWidth = 1;
   `endif
-    ret.NumExtIntrSyncs = 2;
-    ret.NumExtInIntrs = 0;
+    ret.BusErr          = 0;
+    ret.SerialLink      = 0;
+    ret.SpiHost         = 1;
+    ret.Vga             = 0;
+    ret.I2c             = 0;
+    ret.Gpio            = 1;
     return ret;
   endfunction
 
@@ -158,32 +146,9 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   `CHESHIRE_TYPEDEF_ALL(, FPGACfg)
 
   ////////////////////////
-  //  Clock Generation  //
+  //  Clock Generation  in the MPSoC//
   ////////////////////////
 
-  wire sys_clk;
-  wire soc_clk;
-  wire usb_clk;
-
-  IBUFDS #(
-    .IBUF_LOW_PWR ("FALSE")
-  ) i_bufds_sys_clk (
-    .I  ( sys_clk_p ),
-    .IB ( sys_clk_n ),
-    .O  ( sys_clk   )
-  );
-
-  clkwiz i_clkwiz (
-    .clk_in1  ( sys_clk ),
-    // .CLK_IN1_D_clk_p (sys_clk_p),
-    // .CLK_IN1_D_clk_n (sys_clk_n),
-    .reset    ( '0 ),
-    .locked   ( ),
-    .clk_50   ( soc_clk ),
-    .clk_48   ( usb_clk ),
-    .clk_20   ( ),
-    .clk_10   ( )
-  );
 
   /////////////////////
   //  System Inputs  //
@@ -207,56 +172,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `endif
 
   ////////////
-  //  VIOs  //
-  ////////////
-
-  logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
-  logic [1:0] boot_mode, vio_boot_mode;
-  logic       sys_rst;  
-  
-  logic uart_tx_o, uart_rx_i;
-
-`ifdef USE_VIO
-  vio i_vio (
-    .clk        ( soc_clk ),
-    .probe_out0 ( vio_reset         ),
-    .probe_out1 ( vio_boot_mode     ),
-    .probe_out2 ( vio_boot_mode_sel ),
-    .probe_out3 ( vio_uart_sel      )
-  );
-`else
-  assign vio_reset          = '0;
-  assign vio_boot_mode      = '0;
-  assign vio_boot_mode_sel  = '0;
-  assign vio_uart_sel  = '0;
-`endif
-
-  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
-  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
-  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
-
-`ifdef USE_RESET
-  assign sys_rst = sys_reset | vio_reset;
-`elsif USE_RESETN
-  assign sys_rst = ~sys_resetn | vio_reset;
-`endif
-  assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
-
-  //////////////////
-  //  Reset Sync  //
-  //////////////////
-
-  wire rst_n;
-
-  rstgen i_rstgen (
-    .clk_i        ( soc_clk     ),
-    .rst_ni       ( ~sys_rst    ),
-    .test_mode_i  ( test_mode_i ),
-    .rst_no       ( rst_n       ),
-    .init_no      ( )
-  );
-
-  ////////////
   //  JTAG  //
   ////////////
 
@@ -269,16 +184,16 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign jtag_trst_ni = 1'b1;
 `endif
 
-  //////////////////
-  // I2C Adaption //
-  //////////////////
+//   //////////////////
+//   // I2C Adaption //
+//   //////////////////
 
-  logic i2c_sda_soc_out;
-  logic i2c_sda_soc_in;
-  logic i2c_scl_soc_out;
-  logic i2c_scl_soc_in;
-  logic i2c_sda_en;
-  logic i2c_scl_en;
+//   logic i2c_sda_soc_out;
+//   logic i2c_sda_soc_in;
+//   logic i2c_scl_soc_out;
+//   logic i2c_scl_soc_in;
+//   logic i2c_sda_en;
+//   logic i2c_scl_en;
 
 `ifdef USE_I2C
   IOBUF #(
@@ -454,25 +369,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `endif
 `endif
 
-  ///////////
-  //  USB  //
-  ///////////
-
-  // SoC IOs
-  logic [UsbNumPorts-1:0] usb_dm_i;
-  logic [UsbNumPorts-1:0] usb_dm_o;
-  logic [UsbNumPorts-1:0] usb_dm_oe_o;
-  logic [UsbNumPorts-1:0] usb_dp_i;
-  logic [UsbNumPorts-1:0] usb_dp_o;
-  logic [UsbNumPorts-1:0] usb_dp_oe_o;
-
-  for (genvar i = 0; i < FPGACfg.Usb*UsbNumPorts; ++i) begin : gen_usb_tristate
-    assign usb_dp_io [i] = usb_dp_oe_o[i] ? usb_dp_o[i] : 'z;
-    assign usb_dp_i  [i] = usb_dp_io[i];
-    assign usb_dm_io [i] = usb_dm_oe_o[i] ? usb_dm_o[i] : 'z;
-    assign usb_dm_i  [i] = usb_dm_io[i];
-  end
-
   /////////////////////////
   // "RTC" Clock Divider //
   /////////////////////////
@@ -500,31 +396,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
       rtc_clk_q <= rtc_clk_d;
     end
   end
-
-  ///////////////////
-  // Cfg Registers //
-  ///////////////////
-
-  chs_xilinx_reg_pkg::chs_xilinx_reg2hw_t reg2hw;
-  chs_xilinx_reg_pkg::chs_xilinx_hw2reg_t hw2reg;
-
-  reg_req_t cfg_reg_req;
-  reg_rsp_t cfg_reg_rsp;
-
-`ifdef USE_CFG_REGS
-  chs_xilinx_reg_top #(
-    .reg_req_t ( reg_req_t ),
-    .reg_rsp_t ( reg_rsp_t )
-  ) i_chs_xilinx_reg_top (
-    .clk_i     ( soc_clk ),
-    .rst_ni    ( rst_n   ),
-    .reg_req_i ( cfg_reg_req ),
-    .reg_rsp_o ( cfg_reg_rsp ),
-    .reg2hw    ( reg2hw ),
-    .hw2reg    ( hw2reg ),
-    .devmode_i ( 1'b1   )
-  );
-`endif
 
   //////////
   // LEDs //
@@ -625,6 +496,65 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign axi_llc_mst_rsp  = axi_dram_mst_rsp;
 `endif
 
+
+  wire sys_clk;
+  wire soc_clk;
+
+  IBUFDS #(
+    .IBUF_LOW_PWR ("FALSE")
+  ) i_bufds_sys_clk (
+    .I  ( sys_clk_p ),
+    .IB ( sys_clk_n ),
+    .O  ( sys_clk   )
+  );
+
+  clkwiz i_clkwiz (
+    .clk_in1  ( sys_clk ),
+    .reset    ( '0 ),
+    .locked   ( ),    
+    .clk_48  ( ),
+    .clk_50   ( soc_clk  ),
+    .clk_20   ( ),
+    .clk_15   ( clk15)
+  );
+
+  ////////////
+  //  VIOs  //
+  ////////////
+
+  logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
+  logic [1:0] boot_mode, vio_boot_mode;
+  logic       sys_rst;
+
+  logic uart_tx_o, uart_rx_i;
+
+`ifdef USE_VIO
+  vio i_vio (
+    .clk        ( soc_clk ),
+    .probe_out0 ( vio_reset         ),
+    .probe_out1 ( vio_boot_mode     ),
+    .probe_out2 ( vio_boot_mode_sel ),
+    .probe_out3 ( vio_uart_sel  ),
+    .probe_in0  ( SPI_EN_CONF   )
+  );
+`else
+  assign vio_reset          = '0;
+  assign vio_boot_mode      = '0;
+  assign vio_boot_mode_sel  = '0;
+  assign vio_uart_out_sel   = '0;
+`endif
+
+`ifdef USE_RESET
+  assign sys_rst = sys_reset | vio_reset;
+`elsif USE_RESETN
+  assign sys_rst = ~sys_resetn | vio_reset;
+`endif
+  assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
+
+  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
+  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
+  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
+
   //////////////////
   // Cheshire SoC //
   //////////////////
@@ -701,15 +631,109 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .vga_blue_o,
 `endif
     .uart_tx_o,
-    .uart_rx_i,
+    .uart_rx_i, 
     .usb_clk_i          ( usb_clk ),
     .usb_rst_ni         ( rst_n ), // Technically should sync to `usb_clk`, but pulse is long enough
-    .usb_dm_i,
-    .usb_dm_o,
-    .usb_dm_oe_o,
-    .usb_dp_i,
-    .usb_dp_o,
-    .usb_dp_oe_o
+    .usb_dm_i (),
+    .usb_dm_o (),
+    .usb_dm_oe_o (),
+    .usb_dp_i (),
+    .usb_dp_o (),
+    .usb_dp_oe_o ()
   );
+
+  logic [31:0] GPIO_i, GPIO_o, GPIO_en;
+
+  logic START_wire, STOP_wire, TEST_wire, NEW_BATCH_wire, NEW_EPOCH_wire, SPI_EN_CONF;
+  
+  assign NEW_EPOCH_wire  = GPIO_o[0];
+  assign STOP_wire       = GPIO_o[1];
+  assign TEST_wire       = GPIO_o[2];
+  assign NEW_BATCH_wire  = GPIO_o[3];
+
+  assign GPIO_i[4]       = BATCH_DONE;
+  assign GPIO_i[5]       = EPOCH_DONE;
+
+  logic [11:0] AXI_BATCH_SIZE, AXI_N_SAMPLES, infer_count;
+  logic [ 2:0] AXI_DO_EPROP; 
+
+  wire [17:0]   AERAM_add;
+  wire                    AERAM_clk;
+  wire [31:0]             AERAM_din;
+  wire [31:0]             AERAM_dout;
+  wire                    AERAM_cs;
+  wire                    AERAM_rst;
+  wire [3:0]              AERAM_we;
+
+  reckon_AXI_top #(
+    .ADDR_WIDTH(16)
+  ) reckon_AXI_top_0 (
+    .clk_i (clk15),
+    .rst_i(~rst_n),
+
+    .SPI_EN_CONF(SPI_EN_CONF),
+
+    .EPOCH_DONE(EPOCH_DONE),
+    .STOP(STOP_wire),
+    .TEST(TEST_wire),
+    .BATCH_DONE(BATCH_DONE),
+    .NEW_BATCH(NEW_BATCH_wire),
+    .NEW_EPOCH(NEW_EPOCH_wire),
+
+    .spi_miso_wire(spi_sd_soc_in[0]),
+    .spi_mosi_wire(spi_sd_soc_out[0]),
+    .spi_sck_wire(spi_sck_soc),
+
+    .BRAM_PORTA_addr(AERAM_add),
+    .BRAM_PORTA_clk(AERAM_clk),
+    .BRAM_PORTA_din(AERAM_din),
+    .BRAM_PORTA_en(AERAM_cs),
+    .BRAM_PORTA_rst(AERAM_rst),
+    .BRAM_PORTA_we(AERAM_we),
+
+    .BRAM_PORTA_dout(AERAM_dout),
+
+    .infer_count_o(infer_count),
+
+    .batch_size_i(AXI_BATCH_SIZE[11:0]),
+    .n_samples_i(AXI_N_SAMPLES[11:0]),
+    .do_eprop_i(AXI_DO_EPROP[2:0])
+  );
+
+  //////////////////
+  //  Reset Sync  //
+  //////////////////
+
+  wire rst_n;
+
+  rstgen i_rstgen (
+    .clk_i        ( soc_clk     ),
+    .rst_ni       ( ~sys_rst    ),
+    .test_mode_i  ( test_mode_i ),
+    .rst_no       ( rst_n       ),
+    .init_no      ( )
+  );
+
+  // MPSoC_clkwiz_wrapper MPSoC_controller_0 (
+  //   .BRAM_PORTA_addr(BRAM_PORTA_addr),
+  //   .BRAM_PORTA_clk(BRAM_PORTA_clk),
+  //   .BRAM_PORTA_din(BRAM_PORTA_din),
+  //   .BRAM_PORTA_en(BRAM_PORTA_en),
+  //   .BRAM_PORTA_rst(BRAM_PORTA_rst),
+  //   .BRAM_PORTA_we(BRAM_PORTA_we),
+  //   .BRAM_PORTA_dout(BRAM_PORTA_dout),
+  //   .CLK_IN1_D_clk_n(sys_clk_n),
+  //   .CLK_IN1_D_clk_p(sys_clk_p),
+  //   .clk_100  ( ),
+  //   .clk_50   ( soc_clk  ),
+  //   .clk_20   ( ),
+  //   .clk_10   ( clk15),
+  //   .clk        ( soc_clk ),
+  //   .probe_out0 ( vio_reset         ),
+  //   .probe_out1 ( vio_boot_mode     ),
+  //   .probe_out2 ( vio_boot_mode_sel ),
+  //   .probe_out3 ( vio_uart_sel  ),
+  //   .probe_in0  ( SPI_EN_CONF   )
+  // );
 
 endmodule

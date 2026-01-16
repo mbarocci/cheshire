@@ -139,7 +139,7 @@ switch $proj {
                     CONFIG.CLK_OUT1_PORT {clk_50} \
                     CONFIG.CLK_OUT2_PORT {clk_48} \
                     CONFIG.CLK_OUT3_PORT {clk_20} \
-                    CONFIG.CLK_OUT4_PORT {clk_10} \
+                    CONFIG.CLK_OUT4_PORT {clk_15} \
                     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {50.000} \
                     CONFIG.CLKOUT1_JITTER {116.415} \
                     CONFIG.CLKOUT1_PHASE_ERROR {77.836} \
@@ -149,7 +149,7 @@ switch $proj {
                     CONFIG.CLKOUT3_REQUESTED_OUT_FREQ {20.000} \
                     CONFIG.CLKOUT4_JITTER {160.570} \
                     CONFIG.CLKOUT4_PHASE_ERROR {77.836} \
-                    CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {10.000} \
+                    CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {15.000} \
                     ] [get_ips $proj]
             }
             default { nocfgexit $proj $board }
@@ -191,7 +191,7 @@ switch $proj {
                     CONFIG.C_PROBE_OUT3_INIT_VAL {0x0} \
                     CONFIG.C_PROBE_OUT1_WIDTH {2} \
                     CONFIG.C_EN_PROBE_IN_ACTIVITY {0} \
-                    CONFIG.C_NUM_PROBE_IN {0} \
+                    CONFIG.C_NUM_PROBE_IN {1} \
                     ] [get_ips $proj]
             }
             default { nocfgexit $proj $board }

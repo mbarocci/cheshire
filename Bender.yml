@@ -34,6 +34,7 @@ dependencies:
 
 export_include_dirs:
   - hw/include
+  - target/xilinx/src
 
 sources:
   - hw/future/UsbOhciAxi4.v
@@ -61,4 +62,19 @@ sources:
       - target/xilinx/src/fan_ctrl.sv
       - target/xilinx/src/regs/chs_xilinx_reg_pkg.sv
       - target/xilinx/src/regs/chs_xilinx_reg_top.sv
-      - target/xilinx/src/cheshire_top_xilinx.sv
+      - hw/reckon_zynq_AXI/rtl/xilinx_zcu102_reckon_chs_top.sv
+      - hw/reckon_zynq_AXI/rtl/BRAM_2ports_we.v
+      - hw/reckon_zynq_AXI/rtl/BRAM_1port_we.v
+      - hw/reckon_zynq_AXI/rtl/RAM_wrapper_new.v
+      - hw/reckon_zynq_AXI/rtl/AER_decoder.v
+      - hw/reckon_zynq_AXI/rtl/reckon_AXI_top.v
+      - hw/reckon_zynq_AXI/rtl/reckon/lfsr_neur_stochround.v
+      - hw/reckon_zynq_AXI/rtl/reckon/lfsr_noise_neur.v
+      - hw/reckon_zynq_AXI/rtl/reckon/lfsr_oneur_stochround.v
+      - hw/reckon_zynq_AXI/rtl/reckon/lfsr_winp_wrec.v
+      - hw/reckon_zynq_AXI/rtl/reckon/lfsr_wout.v
+      - hw/reckon_zynq_AXI/rtl/reckon/reckon.v
+      - hw/reckon_zynq_AXI/rtl/reckon/spi_slave.v
+      - hw/reckon_zynq_AXI/rtl/reckon/srnn.v
+    defines:
+        ADDR_WIDTH: 16

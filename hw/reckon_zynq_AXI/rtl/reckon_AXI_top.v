@@ -1,0 +1,186 @@
+`define N 256
+`define M 8
+
+module reckon_AXI_top #(
+    parameter ADDR_WIDTH = 16
+) (
+    input wire clk_i,
+    input wire rst_i,
+
+    output wire SPI_EN_CONF,
+    output wire EPOCH_DONE,
+    input  wire STOP,
+    input  wire TEST,
+    input  wire NEW_BATCH,
+    input  wire NEW_EPOCH,
+    output wire BATCH_DONE,
+
+    output wire spi_miso_wire,
+    input wire spi_mosi_wire,
+    input wire spi_sck_wire,
+
+    input wire [ADDR_WIDTH+1:0] BRAM_PORTA_addr,
+    input wire BRAM_PORTA_clk,
+    input wire [31:0] BRAM_PORTA_din,
+    input wire BRAM_PORTA_en,
+    input wire BRAM_PORTA_rst,
+    input wire [3:0] BRAM_PORTA_we,
+
+    output wire [31:0] BRAM_PORTA_dout,
+
+    output wire [11:0] infer_count_o,
+
+    input wire [11:0] batch_size_i,
+    input wire [11:0] n_samples_i,
+    input wire [2:0 ] do_eprop_i
+
+);
+
+wire [31:0] SPI_CYCLES_PER_TICK;
+wire [11:0] SPI_N_EPOCHS, SPI_N_SAMPLES, SPI_BATCH_SIZE;
+wire [11:0] N_SAMPLES, BATCH_SIZE;
+reg  [11:0] N_SAMPLES_reg, BATCH_SIZE_reg;
+wire [11:0] SPI_LABEL_DELAY, SPI_INFER_ACC_DELAY;
+wire        SPI_TIMING;
+
+wire [2:0 ] DO_EPROP;
+reg  [2:0 ] DO_EPROP_reg;
+
+wire [ADDR_WIDTH-1:0] AXI_BRAM_ADDR;
+
+wire AERIN_TAR_EN;
+wire TIME_TICK;
+wire INFER_ACC;
+wire TIMING_ERROR_RDY;
+
+wire [31:0] DIN;
+wire CS;
+wire [ADDR_WIDTH-1:0] RAM_ADDR;
+
+assign AXI_BRAM_ADDR = BRAM_PORTA_addr[ADDR_WIDTH+1:2];
+
+wire [7:0] OUT_DATA, AERIN_ADDR;
+
+always @(posedge clk_i) begin
+    N_SAMPLES_reg  <= n_samples_i;
+    BATCH_SIZE_reg <= batch_size_i;
+    DO_EPROP_reg   <= do_eprop_i;
+end
+
+assign N_SAMPLES = N_SAMPLES_reg;
+assign BATCH_SIZE = BATCH_SIZE_reg;
+assign DO_EPROP = DO_EPROP_reg;
+
+reckon #(
+    .N(256),
+    .M(8)
+) reckon_0 (
+    // Global inputs   -------------------------------
+    .CLK_EXT(clk_i),
+    .CLK_INT_EN('b0),
+    .RST(rst_i),
+
+    // SPI slave       -------------------------------
+    .SCK (spi_sck_wire),
+    .MOSI(spi_mosi_wire),
+    .MISO(spi_miso_wire),
+
+    // Input bus and control inputs ------------------
+    .AERIN_ADDR(AERIN_ADDR),
+    .AERIN_REQ(AERIN_REQ),
+    .AERIN_ACK(AERIN_ACK),
+    .AERIN_TAR_EN(AERIN_TAR_EN),
+    .SAMPLE(SAMPLE),
+    .TIME_TICK(TIME_TICK),
+    .TARGET_VALID(TARGET_VALID),
+    .INFER_ACC(INFER_ACC),
+
+    // Output bus and control outputs ----------------
+    .SPI_RDY(SPI_RDY),
+    .TIMING_ERROR_RDY(TIMING_ERROR_RDY),
+    .SPI_TIMING_MODE(SPI_TIMING_MODE),
+    .SPI_CYCLES_PER_TICK(SPI_CYCLES_PER_TICK),
+    .SPI_N_EPOCHS(SPI_N_EPOCHS),
+    .SPI_N_SAMPLES(SPI_N_SAMPLES),
+    .SPI_BATCH_SIZE(SPI_BATCH_SIZE),
+    .SPI_LABEL_DELAY(SPI_LABEL_DELAY),
+    .SPI_INFER_ACC_DELAY(SPI_INFER_ACC_DELAY),
+    .OUT_REQ(OUT_REQ),
+    .OUT_ACK(OUT_ACK),
+    .OUT_DATA(OUT_DATA),
+    .infer_count(infer_count_o),
+    .SPI_EN_CONF(SPI_EN_CONF),
+    .DO_EPROP(DO_EPROP)
+);
+
+AER_decoder #(
+    .ADDR_WIDTH(ADDR_WIDTH)
+) AER_decoder_0 (
+
+    .CLK(clk_i),
+
+    .STOP(STOP),
+    .RST(rst_i),
+
+    .TEST(TEST),
+
+    .AERIN_ADDR(AERIN_ADDR),
+    .AERIN_REQ(AERIN_REQ),
+    .AERIN_TAR_EN(AERIN_TAR_EN),
+    .AERIN_ACK(AERIN_ACK),
+    .TIME_TICK(TIME_TICK),
+    .SPI_CYCLES_PER_TICK(SPI_CYCLES_PER_TICK),
+
+    .SPI_TIMING(SPI_TIMING_MODE),
+    .SPI_N_EPOCHS(SPI_N_EPOCHS),
+    .N_SAMPLES(N_SAMPLES),
+    .BATCH_SIZE(BATCH_SIZE),
+    .SPI_LABEL_DELAY(SPI_LABEL_DELAY),
+    .SPI_INFER_ACC_DELAY(SPI_INFER_ACC_DELAY),
+
+    .TIMING_ERROR_RDY(TIMING_ERROR_RDY),
+    .SAMPLE(SAMPLE),
+    .TARGET_VALID(TARGET_VALID),
+    .INFER_ACC(INFER_ACC),
+
+    .OUT_DATA(OUT_DATA),
+    .OUT_REQ(OUT_REQ),
+    .OUT_ACK(OUT_ACK),
+
+    .CS(CS),
+    .DIN(DIN),
+    .RAM_ADDR(RAM_ADDR),
+
+    .NEW_BATCH(NEW_BATCH),
+    .NEW_EPOCH(NEW_EPOCH),
+    .BATCH_DONE(BATCH_DONE),
+    .EPOCH_DONE(EPOCH_DONE),
+
+    .infer_count_o(infer_count_o)
+);
+
+BRAM2_we_inst #(
+    .NB_COL(4),
+    .COL_WIDTH(8),
+    .RAM_WIDTH(32),
+    .RAM_DEPTH((2**(ADDR_WIDTH))),
+    .INIT_FILE("")
+) BRAM_AERDATA_0 (
+    .ADDRA(AXI_BRAM_ADDR),
+    .ADDRB(RAM_ADDR),
+    .DINA (BRAM_PORTA_din),
+    .DINB ('d0),
+    .CLKA (BRAM_PORTA_clk),
+    .CLKB (clk_i),
+    .WEA  (BRAM_PORTA_we),
+    .WEB  (4'b0),
+    .CSA  (BRAM_PORTA_en),
+    .CSB  (CS),
+    .RSTA      (BRAM_PORTA_rst),
+    .REGENA    (),
+    .RSTB      (),
+    .REGENB    (),
+    .DOUTA(BRAM_PORTA_dout),
+    .DOUTB(DIN)
+);
+endmodule
