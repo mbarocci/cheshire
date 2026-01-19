@@ -13,3 +13,4 @@ dependencies:
     - mkdocs-material
     - markdown-grid-tables
     - setuptools
+    - pyserial

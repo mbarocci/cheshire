@@ -57,3 +57,5 @@ vivado*
 .Xil
 *.mif
 hs_err*
+bitfile/*
+sw/SPI_reckon/*

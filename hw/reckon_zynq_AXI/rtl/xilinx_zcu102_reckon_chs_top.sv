@@ -681,7 +681,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .NEW_EPOCH(NEW_EPOCH_wire),
 
     .spi_miso_wire(spi_sd_soc_in[0]),
-    .spi_mosi_wire(spi_sd_soc_out[0]),
+    .spi_mosi_wire(spi_sd_soc_out[1]),
     .spi_sck_wire(spi_sck_soc),
 
     .BRAM_PORTA_addr(AERAM_add),
