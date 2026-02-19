@@ -52,7 +52,9 @@ CHS_XILINX_BOARDS := genesys2 vcu128 vcu118 zcu102
 CHS_XILINX_IPS_genesys2 := clkwiz vio mig7s
 CHS_XILINX_IPS_vcu128   := clkwiz vio ddr4
 CHS_XILINX_IPS_vcu118   := clkwiz vio ddr4
-CHS_XILINX_IPS_zcu102	:= clkwiz vio
+#CHS_XILINX_IPS_zcu102	:= clkwiz vio
+CHS_XILINX_IPS_zcu102	:= 
+
 
 $(CHS_XILINX_DIR)/scripts/add_sources.%.tcl: $(CHS_ROOT)/Bender.yml $(CHS_XILINX_HW)
 	$(BENDER) script vivado -t fpga -t $* $(CHS_BENDER_RTL_FLAGS) > $@
@@ -61,7 +63,7 @@ define chs_xilinx_bit_rule
 $$(CHS_XILINX_DIR)/out/%.$(1).bit: \
 		$$(CHS_XILINX_DIR)/scripts/impl_sys.tcl \
 		$$(CHS_XILINX_DIR)/scripts/add_sources.$(1).tcl \
-		$$(CHS_XILINX_IPS_$(1):%=$(CHS_XILINX_DIR)/build/$(1).%/out.xci) \
+ 		$$(CHS_XILINX_IPS_$(1):%=$(CHS_XILINX_DIR)/build/$(1).%/out.xci) \
 		$$(CHS_HW_ALL) \
 		| $$(CHS_XILINX_DIR)/build/$(1).%/
 	@rm -f $$(CHS_XILINX_DIR)/build/$$*.$(1)*.log $$(CHS_XILINX_DIR)/build/$$*.$(1)*.jou

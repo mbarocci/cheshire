@@ -1,4 +1,4 @@
-module AER_decoder #(
+module aer_decoder #(
   parameter ADDR_WIDTH = 13
 )(
 

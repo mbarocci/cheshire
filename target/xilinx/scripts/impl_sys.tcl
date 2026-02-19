@@ -13,7 +13,7 @@ source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
 # Addtional args provide IPs
-read_ip [exec realpath {*}[lrange $argv 2 end]]
+# read_ip [exec realpath {*}[lrange $argv 2 end]]
 
 # Load constraints
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${proj}.xdc
@@ -26,7 +26,20 @@ source ${xilinx_root}/scripts/add_sources.${board}.tcl
 set_property top ${proj}_top_xilinx [current_fileset]
 update_compile_order -fileset sources_1
 
-# Set synthesis properties
+# Add block design
+if {[file exists "${xilinx_root}/scripts/chs-bd-${board}.tcl"]} {
+    source ${xilinx_root}/scripts/chs-bd-${board}.tcl
+    set_property synth_checkpoint_mode None [get_files  ${project_root}/${proj}.srcs/sources_1/bd/${board}_mpsoc/${board}_mpsoc.bd]
+    generate_target all [get_files ${project_root}/${proj}.srcs/sources_1/bd/${board}_mpsoc/${board}_mpsoc.bd]
+} else {
+    puts "Warning: ${xilinx_root}/scripts/chs-bd-${board}.tcl not found -- skipping block design for ${board}."
+}
+
+# export_ip_user_files -of_objects [get_files /home/michelangelo/cheshire/target/xilinx/build/zcu102.cheshire/cheshire.srcs/sources_1/bd/zcu102_mpsoc/zcu102_mpsoc.bd] -no_script -sync -force -quiet
+# create_ip_run [get_files -of_objects [get_fileset sources_1] /home/michelangelo/cheshire/target/xilinx/build/zcu102.cheshire/cheshire.srcs/sources_1/bd/zcu102_mpsoc/zcu102_mpsoc.bd]
+# launch_runs zcu102_mpsoc_axi_bram_ctrl_0_0_synth_1 zcu102_mpsoc_clk_wiz_0_0_synth_1 zcu102_mpsoc_proc_sys_reset_0_0_synth_1 zcu102_mpsoc_smartconnect_0_0_synth_1 zcu102_mpsoc_vio_0_0_synth_1 zcu102_mpsoc_zynq_ultra_ps_e_0_0_synth_1
+
+# Set synthesis propertiesl
 # TODO: investigate resource-affordable retiming
 set_property XPM_LIBRARIES XPM_MEMORY [current_project]
 set_property strategy Flow_PerfOptimized_high [get_runs synth_1]

@@ -72,7 +72,7 @@ module reckon #(
 
     input wire  [ 11:0] infer_count,
     output wire         SPI_EN_CONF,
-    input wire  [  3:0] DO_EPROP
+    input wire  [  2:0] DO_EPROP
 );
 
     //----------------------------------------------------------------------------------

@@ -49,6 +49,8 @@
   `define USE_JTAG
   // `define USE_DDR4
   `define USE_VIO
+  `define USE_MPSOC
+  `define USE_NUM_LED 1
 `endif
 
 /////////////////////

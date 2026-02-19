@@ -1,32 +1,37 @@
 `define N 256
 `define M 8
 
-module reckon_AXI_top #(
+module reckon_axi_top #(
     parameter ADDR_WIDTH = 16
 ) (
     input wire clk_i,
     input wire rst_i,
 
     output wire SPI_EN_CONF,
-    output wire EPOCH_DONE,
-    input  wire STOP,
-    input  wire TEST,
-    input  wire NEW_BATCH,
-    input  wire NEW_EPOCH,
-    output wire BATCH_DONE,
+    // output wire EPOCH_DONE,
+    // input  wire STOP,
+    // input  wire TEST,
+    // input  wire NEW_BATCH,
+    // input  wire NEW_EPOCH,
+    // output wire BATCH_DONE,
+    output wire [31:0] reckon_ctrl_o_0,
+    output wire [31:0] reckon_ctrl_o_1,
+    input wire  [31:0] reckon_ctrl_i_0,
+    input wire  [31:0] reckon_ctrl_i_1,
+    input wire  [31:0] reckon_ctrl_i_2,
+    input wire  [31:0] reckon_ctrl_i_3,
 
     output wire spi_miso_wire,
     input wire spi_mosi_wire,
     input wire spi_sck_wire,
 
-    input wire [ADDR_WIDTH+1:0] BRAM_PORTA_addr,
-    input wire BRAM_PORTA_clk,
-    input wire [31:0] BRAM_PORTA_din,
-    input wire BRAM_PORTA_en,
-    input wire BRAM_PORTA_rst,
-    input wire [3:0] BRAM_PORTA_we,
-
-    output wire [31:0] BRAM_PORTA_dout,
+    input wire  [ADDR_WIDTH+1:0] BRAM_PORTA_addr,
+    input wire                   BRAM_PORTA_clk,
+    input wire  [31:0]           BRAM_PORTA_din,
+    input wire                   BRAM_PORTA_en,
+    input wire                   BRAM_PORTA_rst,
+    input wire  [3:0]            BRAM_PORTA_we,
+    output wire [31:0]           BRAM_PORTA_dout,
 
     output wire [11:0] infer_count_o,
 
@@ -71,6 +76,26 @@ assign N_SAMPLES = N_SAMPLES_reg;
 assign BATCH_SIZE = BATCH_SIZE_reg;
 assign DO_EPROP = DO_EPROP_reg;
 
+wire NEW_BATCH, NEW_EPOCH, TEST, STOP, EPOCH_DONE_wire, BATCH_DONE_wire;
+reg  NEW_BATCH_sync, NEW_EPOCH_sync, TEST_sync, STOP_sync, EPOCH_DONE_reg, BATCH_DONE_reg;
+
+always @(posedge clk_i) begin
+    NEW_BATCH_sync <= NEW_BATCH;
+    NEW_EPOCH_sync <= NEW_EPOCH;
+    TEST_sync      <= TEST;
+    STOP_sync      <= STOP;
+    EPOCH_DONE_reg <= EPOCH_DONE_wire;
+    BATCH_DONE_reg <= BATCH_DONE_wire;
+end
+
+assign reckon_ctrl_o_0[0] = EPOCH_DONE_reg;
+assign reckon_ctrl_o_1[0] = BATCH_DONE_reg;
+
+assign NEW_EPOCH      = reckon_ctrl_i_0[0];
+assign NEW_BATCH      = reckon_ctrl_i_1[0];
+assign TEST           = reckon_ctrl_i_2[0];
+assign STOP           = reckon_ctrl_i_3[0];
+
 reckon #(
     .N(256),
     .M(8)
@@ -113,16 +138,16 @@ reckon #(
     .DO_EPROP(DO_EPROP)
 );
 
-AER_decoder #(
+aer_decoder #(
     .ADDR_WIDTH(ADDR_WIDTH)
-) AER_decoder_0 (
+) aer_decoder_0 (
 
     .CLK(clk_i),
 
-    .STOP(STOP),
+    .STOP(STOP_sync),
     .RST(rst_i),
 
-    .TEST(TEST),
+    .TEST(TEST_sync),
 
     .AERIN_ADDR(AERIN_ADDR),
     .AERIN_REQ(AERIN_REQ),
@@ -151,10 +176,10 @@ AER_decoder #(
     .DIN(DIN),
     .RAM_ADDR(RAM_ADDR),
 
-    .NEW_BATCH(NEW_BATCH),
-    .NEW_EPOCH(NEW_EPOCH),
-    .BATCH_DONE(BATCH_DONE),
-    .EPOCH_DONE(EPOCH_DONE),
+    .NEW_BATCH(NEW_BATCH_sync),
+    .NEW_EPOCH(NEW_EPOCH_sync),
+    .BATCH_DONE(BATCH_DONE_wire),
+    .EPOCH_DONE(EPOCH_DONE_wire),
 
     .infer_count_o(infer_count_o)
 );

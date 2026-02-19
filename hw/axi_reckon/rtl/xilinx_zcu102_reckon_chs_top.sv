@@ -98,6 +98,10 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   input  logic  uart_rx_i_gpio
 );
 
+  logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
+  logic [1:0] boot_mode, vio_boot_mode;
+  logic       sys_rst;
+
   ///////////////////////
   //  Cheshire Config  //
   ///////////////////////
@@ -138,8 +142,13 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     ret.Vga             = 0;
     ret.I2c             = 0;
     ret.Gpio            = 1;
+    ret.AxiExtNumSlv    = 1;
     return ret;
   endfunction
+
+  localparam AxiRegsNin  = 3;
+  localparam AxiRegsNout = 8;
+  localparam UseAxiGPIO  = 1;
 
   // Configure cheshire for FPGA mapping
   localparam cheshire_cfg_t FPGACfg = gen_cheshire_xilinx_cfg();
@@ -401,9 +410,9 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   // LEDs //
   //////////
 
-`ifdef USE_NUM_LED
-  assign led_o = reg2hw.leds;
-`endif
+// `ifdef USE_NUM_LED
+//   assign led_o = reg2hw.leds;
+// `endif
 
   /////////////////
   // Fan Control //
@@ -496,64 +505,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign axi_llc_mst_rsp  = axi_dram_mst_rsp;
 `endif
 
-
-  wire sys_clk;
-  wire soc_clk;
-
-  IBUFDS #(
-    .IBUF_LOW_PWR ("FALSE")
-  ) i_bufds_sys_clk (
-    .I  ( sys_clk_p ),
-    .IB ( sys_clk_n ),
-    .O  ( sys_clk   )
-  );
-
-  clkwiz i_clkwiz (
-    .clk_in1  ( sys_clk ),
-    .reset    ( '0 ),
-    .locked   ( ),    
-    .clk_48  ( ),
-    .clk_50   ( soc_clk  ),
-    .clk_20   ( ),
-    .clk_15   ( clk15)
-  );
-
-  ////////////
-  //  VIOs  //
-  ////////////
-
-  logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
-  logic [1:0] boot_mode, vio_boot_mode;
-  logic       sys_rst;
-
-  logic uart_tx_o, uart_rx_i;
-
-`ifdef USE_VIO
-  vio i_vio (
-    .clk        ( soc_clk ),
-    .probe_out0 ( vio_reset         ),
-    .probe_out1 ( vio_boot_mode     ),
-    .probe_out2 ( vio_boot_mode_sel ),
-    .probe_out3 ( vio_uart_sel  ),
-    .probe_in0  ( SPI_EN_CONF   )
-  );
-`else
-  assign vio_reset          = '0;
-  assign vio_boot_mode      = '0;
-  assign vio_boot_mode_sel  = '0;
-  assign vio_uart_out_sel   = '0;
-`endif
-
-`ifdef USE_RESET
-  assign sys_rst = sys_reset | vio_reset;
-`elsif USE_RESETN
-  assign sys_rst = ~sys_resetn | vio_reset;
-`endif
-  assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
-
-  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
-  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
-  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
+  logic sys_clk;
+  logic soc_clk;
 
   //////////////////
   // Cheshire SoC //
@@ -580,8 +533,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .axi_llc_mst_rsp_i  ( axi_llc_mst_rsp ),
     .axi_ext_mst_req_i  ( '0 ),
     .axi_ext_mst_rsp_o  ( ),
-    .axi_ext_slv_req_o  ( ),
-    .axi_ext_slv_rsp_i  ( '0 ),
+    .axi_ext_slv_req_o  ( axi_slv_i ),
+    .axi_ext_slv_rsp_i  ( axi_slv_o ),
 `ifdef USE_CFG_REGS
     .reg_ext_slv_req_o  ( cfg_reg_req ),
     .reg_ext_slv_rsp_i  ( cfg_reg_rsp ),
@@ -642,69 +595,111 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .usb_dp_oe_o ()
   );
 
-  logic [31:0] GPIO_i, GPIO_o, GPIO_en;
+  // logic [31:0] axi_gpio_i, axi_gpio_o, axi_gpio_en;
 
-  logic START_wire, STOP_wire, TEST_wire, NEW_BATCH_wire, NEW_EPOCH_wire, SPI_EN_CONF;
+  // logic START_wire, STOP_wire, TEST_wire, NEW_BATCH_wire, NEW_EPOCH_wire, SPI_EN_CONF;
+
+  // assign NEW_EPOCH_wire  = axi_gpio_o[0];
+  // assign STOP_wire       = axi_gpio_o[1];
+  // assign TEST_wire       = axi_gpio_o[2];
+  // assign NEW_BATCH_wire  = axi_gpio_o[3];
+
+  // assign axi_gpio_i[4]       = batch_done;
+  // assign axi_gpio_i[5]       = epoch_done;
+
+  logic [31:0] axi_batch_size, axi_n_samples, axi_do_eprop, infer_count;
+  // logic [31:0] reckon_ctrl   [5:0];
+  logic [31:0] reckon_ctrl_i [3:0];
+  logic [31:0] reckon_ctrl_o [1:0];
   
-  assign NEW_EPOCH_wire  = GPIO_o[0];
-  assign STOP_wire       = GPIO_o[1];
-  assign TEST_wire       = GPIO_o[2];
-  assign NEW_BATCH_wire  = GPIO_o[3];
+  logic [17:0] AERAM_add;
+  logic        AERAM_clk;
+  logic [31:0] AERAM_din;
+  logic [31:0] AERAM_dout;
+  logic        AERAM_cs;
+  logic        AERAM_rst;
+  logic [3:0]  AERAM_we;
 
-  assign GPIO_i[4]       = BATCH_DONE;
-  assign GPIO_i[5]       = EPOCH_DONE;
+  logic [31:0] axi_reg_o [AxiRegsNout-1:0];
+  logic [31:0] axi_reg_i [AxiRegsNin-1:0 ];
 
-  logic [11:0] AXI_BATCH_SIZE, AXI_N_SAMPLES, infer_count;
-  logic [ 2:0] AXI_DO_EPROP; 
+  logic debug_axi;
 
-  wire [17:0]   AERAM_add;
-  wire                    AERAM_clk;
-  wire [31:0]             AERAM_din;
-  wire [31:0]             AERAM_dout;
-  wire                    AERAM_cs;
-  wire                    AERAM_rst;
-  wire [3:0]              AERAM_we;
+  assign axi_batch_size   = axi_reg_o[0];
+  assign axi_n_samples    = axi_reg_o[1];
+  assign axi_do_eprop     = axi_reg_o[2];
+  assign reckon_ctrl_i[0] = axi_reg_o[3];
+  assign reckon_ctrl_i[1] = axi_reg_o[4];
+  assign reckon_ctrl_i[2] = axi_reg_o[5];
+  assign reckon_ctrl_i[3] = axi_reg_o[6];
+  assign debug_axi        = axi_reg_o[7][0];
 
-  reckon_AXI_top #(
+  assign led_o[0]        = debug_axi;
+
+  assign axi_reg_i[0]   = infer_count;
+  assign axi_reg_i[1]   = reckon_ctrl_o[0];
+  assign axi_reg_i[2]   = reckon_ctrl_o[1];
+
+  reckon_axi_top #(
     .ADDR_WIDTH(16)
-  ) reckon_AXI_top_0 (
+  ) reckon_axi_top_0 (
     .clk_i (clk15),
-    .rst_i(~rst_n),
-
+    .rst_i (~rst_n),
     .SPI_EN_CONF(SPI_EN_CONF),
-
-    .EPOCH_DONE(EPOCH_DONE),
-    .STOP(STOP_wire),
-    .TEST(TEST_wire),
-    .BATCH_DONE(BATCH_DONE),
-    .NEW_BATCH(NEW_BATCH_wire),
-    .NEW_EPOCH(NEW_EPOCH_wire),
-
+    // .epoch_done(epoch_done),
+    // .STOP(STOP_wire),
+    // .TEST(TEST_wire),
+    // .batch_done(batch_done),
+    // .NEW_BATCH(NEW_BATCH_wire),
+    // .NEW_EPOCH(NEW_EPOCH_wire),
+    .reckon_ctrl_i_0(reckon_ctrl_i[0]),
+    .reckon_ctrl_i_1(reckon_ctrl_i[1]),
+    .reckon_ctrl_i_2(reckon_ctrl_i[2]),
+    .reckon_ctrl_i_3(reckon_ctrl_i[3]),
+    .reckon_ctrl_o_0(reckon_ctrl_o[0]),
+    .reckon_ctrl_o_1(reckon_ctrl_o[1]),
     .spi_miso_wire(spi_sd_soc_in[0]),
     .spi_mosi_wire(spi_sd_soc_out[1]),
     .spi_sck_wire(spi_sck_soc),
-
     .BRAM_PORTA_addr(AERAM_add),
     .BRAM_PORTA_clk(AERAM_clk),
     .BRAM_PORTA_din(AERAM_din),
     .BRAM_PORTA_en(AERAM_cs),
     .BRAM_PORTA_rst(AERAM_rst),
     .BRAM_PORTA_we(AERAM_we),
-
     .BRAM_PORTA_dout(AERAM_dout),
-
     .infer_count_o(infer_count),
+    .batch_size_i(axi_batch_size[11:0]),
+    .n_samples_i(axi_n_samples[11:0]),
+    .do_eprop_i(axi_do_eprop[2:0])
+  );
 
-    .batch_size_i(AXI_BATCH_SIZE[11:0]),
-    .n_samples_i(AXI_N_SAMPLES[11:0]),
-    .do_eprop_i(AXI_DO_EPROP[2:0])
+  axi_slv_req_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_i;
+  axi_slv_rsp_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_o;
+
+  axi_layer #(
+    .Cfg               ( FPGACfg ),
+    .AxiRegsNin        ( AxiRegsNin ),
+    .AxiRegsNout       ( AxiRegsNout ),
+    .UseAxiGPIO        ( UseAxiGPIO ),
+    .axi_ext_slv_req_t ( axi_slv_req_t ),
+    .axi_ext_slv_rsp_t ( axi_slv_rsp_t )
+  ) axi_layer_0 (
+    .clk_i             ( soc_clk ),
+    .rst_ni            ( rst_n ),
+    .axi_ext_slv_req_s ( axi_slv_i ),
+    .axi_ext_slv_rsp_s ( axi_slv_o ),
+    .axi_reg_o         ( axi_reg_o ),
+    .axi_reg_i         ( axi_reg_i ),
+    .axi_gpio_o        ( ),
+    .axi_gpio_i        ( '0 )
   );
 
   //////////////////
   //  Reset Sync  //
   //////////////////
 
-  wire rst_n;
+  logic rst_n;
 
   rstgen i_rstgen (
     .clk_i        ( soc_clk     ),
@@ -714,26 +709,75 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .init_no      ( )
   );
 
-  // MPSoC_clkwiz_wrapper MPSoC_controller_0 (
-  //   .BRAM_PORTA_addr(BRAM_PORTA_addr),
-  //   .BRAM_PORTA_clk(BRAM_PORTA_clk),
-  //   .BRAM_PORTA_din(BRAM_PORTA_din),
-  //   .BRAM_PORTA_en(BRAM_PORTA_en),
-  //   .BRAM_PORTA_rst(BRAM_PORTA_rst),
-  //   .BRAM_PORTA_we(BRAM_PORTA_we),
-  //   .BRAM_PORTA_dout(BRAM_PORTA_dout),
-  //   .CLK_IN1_D_clk_n(sys_clk_n),
-  //   .CLK_IN1_D_clk_p(sys_clk_p),
-  //   .clk_100  ( ),
-  //   .clk_50   ( soc_clk  ),
-  //   .clk_20   ( ),
-  //   .clk_10   ( clk15),
-  //   .clk        ( soc_clk ),
-  //   .probe_out0 ( vio_reset         ),
-  //   .probe_out1 ( vio_boot_mode     ),
-  //   .probe_out2 ( vio_boot_mode_sel ),
-  //   .probe_out3 ( vio_uart_sel  ),
-  //   .probe_in0  ( SPI_EN_CONF   )
-  // );
+  logic uart_tx_o, uart_rx_i;
+
+`ifdef USE_RESET
+  assign sys_rst = sys_reset | vio_reset;
+`elsif USE_RESETN
+  assign sys_rst = ~sys_resetn | vio_reset;
+`endif
+  assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
+
+  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
+  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
+  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
+
+`ifdef USE_MPSOC
+  zcu102_mpsoc_wrapper MPSoC_controller_0 (
+    .BRAM_PORTA_addr(AERAM_addr),
+    .BRAM_PORTA_clk (AERAM_clk),
+    .BRAM_PORTA_din (AERAM_din),
+    .BRAM_PORTA_en  (AERAM_cs),
+    .BRAM_PORTA_rst (AERAM_rst),
+    .BRAM_PORTA_we  (AERAM_we),
+    .BRAM_PORTA_dout(AERAM_dout),
+    .CLK_IN1_D_clk_n(sys_clk_n),
+    .CLK_IN1_D_clk_p(sys_clk_p),
+    .clk_48  ( ),
+    .clk_50   ( soc_clk  ),
+    .clk_20   ( ),
+    .clk_15   ( clk15),
+    .probe_out0 ( vio_reset         ),
+    .probe_out1 ( vio_boot_mode     ),
+    .probe_out2 ( vio_boot_mode_sel ),
+    .probe_out3 ( vio_uart_sel  ),
+    .probe_in0  ( SPI_EN_CONF   ),
+    .probe_in1  ( debug_axi     )
+  );
+`else
+  IBUFDS #(
+    .IBUF_LOW_PWR ("FALSE")
+  ) i_bufds_sys_clk (
+    .I  ( sys_clk_p ),
+    .IB ( sys_clk_n ),
+    .O  ( sys_clk   )
+  );
+
+  clkwiz i_clkwiz (
+    .clk_in1  ( sys_clk ),
+    .reset    ( '0 ),
+    .locked   ( ),    
+    .clk_48  ( ),
+    .clk_50   ( soc_clk  ),
+    .clk_20   ( ),
+    .clk_15   ( clk15)
+  );
+  `ifdef USE_VIO
+    vio i_vio (
+      .clk        ( soc_clk ),
+      .probe_out0 ( vio_reset         ),
+      .probe_out1 ( vio_boot_mode     ),
+      .probe_out2 ( vio_boot_mode_sel ),
+      .probe_out3 ( vio_uart_sel  ),
+      .probe_in0  ( SPI_EN_CONF   )
+    );
+
+  `else
+    assign vio_reset          = '0;
+    assign vio_boot_mode      = '0;
+    assign vio_boot_mode_sel  = '0;
+    assign vio_uart_out_sel   = '0;
+  `endif
+`endif
 
 endmodule
