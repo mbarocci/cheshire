@@ -3,7 +3,9 @@ channels:
   - conda-forge
 dependencies:
   - request
+  - setuptools
   - pip:
+    - flatdict
     - hjson
     - mako
     - pyyaml
@@ -12,5 +14,4 @@ dependencies:
     - mkdocs
     - mkdocs-material
     - markdown-grid-tables
-    - setuptools
     - pyserial

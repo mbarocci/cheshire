@@ -125,24 +125,24 @@
 
 // AXI-Lite slave flat signals (no ID, len, size, burst, user)
 `define AXI_LITE_S(__name, __addr_t, __data_t, __strb_t) \
-  logic                     s_axi_``__name``_awvalid;   \
-  __addr_t                  s_axi_``__name``_awaddr;    \
-  axi_pkg::prot_t           s_axi_``__name``_awprot;    \
-  logic                     s_axi_``__name``_wvalid;    \
-  __data_t                  s_axi_``__name``_wdata;     \
-  __strb_t                  s_axi_``__name``_wstrb;     \
-  logic                     s_axi_``__name``_bready;    \
-  logic                     s_axi_``__name``_arvalid;   \
-  __addr_t                  s_axi_``__name``_araddr;    \
-  axi_pkg::prot_t           s_axi_``__name``_arprot;    \
-  logic                     s_axi_``__name``_rready;    \
-  logic                     s_axi_``__name``_awready;   \
-  logic                     s_axi_``__name``_wready;    \
-  logic                     s_axi_``__name``_bvalid;    \
-  axi_pkg::resp_t           s_axi_``__name``_bresp;     \
-  logic                     s_axi_``__name``_arready;   \
-  logic                     s_axi_``__name``_rvalid;    \
-  __data_t                  s_axi_``__name``_rdata;     \
-  axi_pkg::resp_t           s_axi_``__name``_rresp;
+  logic                     s_``__name``_awvalid;   \
+  __addr_t                  s_``__name``_awaddr;    \
+  axi_pkg::prot_t           s_``__name``_awprot;    \
+  logic                     s_``__name``_wvalid;    \
+  __data_t                  s_``__name``_wdata;     \
+  __strb_t                  s_``__name``_wstrb;     \
+  logic                     s_``__name``_bready;    \
+  logic                     s_``__name``_arvalid;   \
+  __addr_t                  s_``__name``_araddr;    \
+  axi_pkg::prot_t           s_``__name``_arprot;    \
+  logic                     s_``__name``_rready;    \
+  logic                     s_``__name``_awready;   \
+  logic                     s_``__name``_wready;    \
+  logic                     s_``__name``_bvalid;    \
+  axi_pkg::resp_t           s_``__name``_bresp;     \
+  logic                     s_``__name``_arready;   \
+  logic                     s_``__name``_rvalid;    \
+  __data_t                  s_``__name``_rdata;     \
+  axi_pkg::resp_t           s_``__name``_rresp;
 
 `endif // AXI_PORT_FLAT_SVH_

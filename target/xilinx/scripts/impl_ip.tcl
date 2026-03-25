@@ -12,7 +12,7 @@ set xilinx_root [file dirname [file dirname [file normalize [info script]]]]
 source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
-# Create and configure selected IP
+# Create and configure selected IPh
 switch $proj {
 
     clkwiz {

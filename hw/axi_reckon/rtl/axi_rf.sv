@@ -128,12 +128,12 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 );
 
 	// AXI4LITE signals
-	reg [C_S_AXI_ADDR_WIDTH-1 : 0] 	axi_awaddr;
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_ADDR_WIDTH-1 : 0] 	axi_awaddr;
 	reg  	axi_awready;
 	reg  	axi_wready;
 	reg [1 : 0] 	axi_bresp;
 	reg  	axi_bvalid;
-	reg [C_S_AXI_ADDR_WIDTH-1 : 0] 	axi_araddr;
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_ADDR_WIDTH-1 : 0] 	axi_araddr;
 	reg  	axi_arready;
 	reg [C_S_AXI_DATA_WIDTH-1 : 0] 	axi_rdata;
 	reg [1 : 0] 	axi_rresp;
@@ -158,9 +158,9 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 	localparam NR = N1+N2;
 	localparam NG = NR +3;
 
-	reg [C_S_AXI_DATA_WIDTH-1:0] read_only_regs  [0:N1-1];  // Read-only registers
-	reg [C_S_AXI_DATA_WIDTH-1:0] write_only_regs [N1:NR-1]; // Write-only registers
-	reg [C_S_AXI_DATA_WIDTH-1:0] gpio_regs       [NR:NG-1]; // GPIOs internal reg
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] read_only_regs  [0:N1-1];  // Read-only registers
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] write_only_regs [N1:NR-1]; // Write-only registers
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] gpio_regs       [NR:NG-1]; // GPIOs internal reg
 
 	integer	 byte_index, i;
 
@@ -516,9 +516,10 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 		// output the read dada 
 		if (slv_reg_rden)
 			begin
-			axi_rdata <= (axi_araddr < N1)                       ? read_only_regs[axi_araddr] : 
-						(axi_araddr >= NR && axi_araddr < NG)   ? gpio_regs[axi_araddr]      :
-						32'hDEADBEEF;    // register read data
+			axi_rdata <= (axi_araddr < N1)                     ? read_only_regs[axi_araddr]  :
+						 (axi_araddr >= N1 && axi_araddr < NR) ? write_only_regs[axi_araddr] : 
+						 (axi_araddr >= NR && axi_araddr < NG) ? gpio_regs[axi_araddr]       :
+						 32'hDEADBEEF;    // register read data
 			end   
 		end
 	end

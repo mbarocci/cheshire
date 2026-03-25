@@ -52,18 +52,18 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `endif
 `endif
 
-`ifdef USE_I2C
-  inout  wire   i2c_scl_io,
-  inout  wire   i2c_sda_io,
-`endif
+// `ifdef USE_I2C
+//   inout  wire   i2c_scl_io,
+//   inout  wire   i2c_sda_io,
+// `endif
 
-`ifdef USE_SD
-  input  logic        sd_cd_i,
-  output logic        sd_cmd_o,
-  inout  wire  [3:0]  sd_d_io,
-  output logic        sd_reset_o,
-  output logic        sd_sclk_o,
-`endif
+// `ifdef USE_SD
+//   input  logic        sd_cd_i,
+//   output logic        sd_cmd_o,
+//   inout  wire  [3:0]  sd_d_io,
+//   output logic        sd_reset_o,
+//   output logic        sd_sclk_o,
+// `endif
 
 // `ifdef USE_FAN
 //   input  logic [3:0]  fan_sw,
@@ -86,10 +86,10 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   `DDR3_INTF
 `endif
 
-`ifdef USE_USB
-  inout  wire [UsbNumPorts-1:0] usb_dm_io,
-  inout  wire [UsbNumPorts-1:0] usb_dp_io,
-`endif
+// `ifdef USE_USB
+//   inout  wire [UsbNumPorts-1:0] usb_dm_io,
+//   inout  wire [UsbNumPorts-1:0] usb_dp_io,
+// `endif
 
   output logic  uart_tx_o_cp2108,
   output logic  uart_tx_o_gpio,
@@ -143,12 +143,18 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     ret.I2c             = 0;
     ret.Gpio            = 1;
     ret.AxiExtNumSlv    = 1;
+    ret.AddrWidth       = 32;
+    ret.AxiDataWidth    = 64;
+    ret.AxiUserDefault  = 0;
+    // Map external AXI slave 0 (axi_rf via axi_layer) to a 1KB region
+    ret.AxiExtNumRules       = 1;
+    ret.AxiExtRegionIdx[0]   = 0;
+    ret.AxiExtRegionStart[0] = 64'h4400_0000;
+    ret.AxiExtRegionEnd[0]   = 64'h4400_0400; // +1KB (0x400), end-exclusive
+    //ret.AxiUserAmoMsb     = 0;  // MSB of AMO field
+    //ret.AxiUserAmoLsb     = 1;
     return ret;
   endfunction
-
-  localparam AxiRegsNin  = 3;
-  localparam AxiRegsNout = 8;
-  localparam UseAxiGPIO  = 1;
 
   // Configure cheshire for FPGA mapping
   localparam cheshire_cfg_t FPGACfg = gen_cheshire_xilinx_cfg();
@@ -163,14 +169,14 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   //  System Inputs  //
   /////////////////////
 
-  // Select SoC reset
-`ifdef USE_RESET
-  logic sys_resetn;
-  assign sys_resetn = ~sys_reset;
-`elsif USE_RESETN
-  logic sys_reset;
-  assign sys_reset  = ~sys_resetn;
-`endif
+//   // Select SoC reset
+// `ifdef USE_RESET
+//   logic sys_resetn;
+//   assign sys_resetn = ~sys_reset;
+// `elsif USE_RESETN
+//   logic sys_reset;
+//   assign sys_reset  = ~sys_resetn;
+// `endif
 
   // Tie off inputs of no switches
 `ifndef USE_SWITCHES
@@ -193,190 +199,41 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign jtag_trst_ni = 1'b1;
 `endif
 
-//   //////////////////
-//   // I2C Adaption //
-//   //////////////////
+  //////////////////////////
+  // Internal SPI slave   //
+  //////////////////////////
 
-//   logic i2c_sda_soc_out;
-//   logic i2c_sda_soc_in;
-//   logic i2c_scl_soc_out;
-//   logic i2c_scl_soc_in;
-//   logic i2c_sda_en;
-//   logic i2c_scl_en;
-
-`ifdef USE_I2C
-  IOBUF #(
-    .DRIVE        ( 12        ),
-    .IBUF_LOW_PWR ( "FALSE"   ),
-    .IOSTANDARD   ( "DEFAULT" ),
-    .SLEW         ( "FAST"    )
-  ) i_scl_iobuf (
-    .O  ( i2c_scl_soc_in  ),
-    .IO ( i2c_scl_io      ),
-    .I  ( i2c_scl_soc_out ),
-    .T  ( ~i2c_scl_en     )
-  );
-
-  IOBUF #(
-    .DRIVE        ( 12        ),
-    .IBUF_LOW_PWR ( "FALSE"   ),
-    .IOSTANDARD   ( "DEFAULT" ),
-    .SLEW         ( "FAST"    )
-  ) i_sda_iobuf (
-    .O  ( i2c_sda_soc_in  ),
-    .IO ( i2c_sda_io      ),
-    .I  ( i2c_sda_soc_out ),
-    .T  ( ~i2c_sda_en     )
-  );
-`endif
-
-  ///////////////
-  // SPI to SD //
-  ///////////////
-
-  logic spi_sck_soc;
+  logic       spi_sck_soc;
   logic [1:0] spi_cs_soc;
   logic [3:0] spi_sd_soc_out;
   logic [3:0] spi_sd_soc_in;
-  // Multiplex between SPI SD mode and QSPI proper
-  logic [3:0] spi_sd_sd_in, spi_sd_spih_in;
 
-  // Choose SoC input based on chip select
-  assign spi_sd_soc_in =
-    ({4{~spi_cs_soc[0]}} & spi_sd_sd_in) | ({4{~spi_cs_soc[1]}} & spi_sd_spih_in);
-
-  logic spi_sck_en;
+  logic       spi_sck_en;
   logic [1:0] spi_cs_en;
   logic [3:0] spi_sd_en;
 
-`ifdef USE_SD
-  // Assert reset low => Apply power to the SD Card
-  assign sd_reset_o       = 1'b0;
-  // SCK  - SD CLK signal
-  assign sd_sclk_o        = spi_sck_en    ? spi_sck_soc       : 1'b1;
-  // CS   - SD DAT3 signal
-  assign sd_d_io[3]       = spi_cs_en[0]  ? spi_cs_soc[0]     : 1'b1;
-  // MOSI - SD CMD signal
-  assign sd_cmd_o         = spi_sd_en[0]  ? spi_sd_soc_out[0] : 1'b1;
-  // MISO - SD DAT0 signal
-  assign spi_sd_sd_in[1]  = sd_d_io[0];
-  // SD DAT1 and DAT2 signal tie-off - Not used for SPI mode
-  assign sd_d_io[2:1]     = 2'b11;
-  // Bind input side of SoC low for output signals
-  assign spi_sd_sd_in[0]  = 1'b0;
-  assign spi_sd_sd_in[2]  = 1'b0;
-  assign spi_sd_sd_in[3]  = 1'b0;
-`endif
+  logic reckon_spi_miso;
 
-  ////////////
-  //  QSPI  //
-  ////////////
+  assign spi_sd_soc_in[0] = 1'b0;
+  assign spi_sd_soc_in[1] = reckon_spi_miso;
+  assign spi_sd_soc_in[2] = 1'b0;
+  assign spi_sd_soc_in[3] = 1'b0;
 
-`ifdef USE_QSPI
-  logic                 qspi_clk;
-  logic                 qspi_clk_ts;
-  logic [3:0]           qspi_dqi;
-  logic [3:0]           qspi_dqo_ts;
-  logic [3:0]           qspi_dqo;
-  logic [SpihNumCs-1:0] qspi_cs_b;
-  logic [SpihNumCs-1:0] qspi_cs_b_ts;
+  //////////////////
+  // I2C Adaption //
+  //////////////////
 
-  assign qspi_clk      = spi_sck_soc;
-  assign qspi_cs_b     = spi_cs_soc;
-  assign qspi_dqo      = spi_sd_soc_out;
-  assign spi_sd_spih_in = qspi_dqi;
+  logic i2c_sda_soc_out;
+  logic i2c_sda_soc_in;
+  logic i2c_scl_soc_out;
+  logic i2c_scl_soc_in;
+  logic i2c_sda_en;
+  logic i2c_scl_en;
 
-  // Tristate enables
-  assign qspi_clk_ts  = ~spi_sck_en;
-  assign qspi_cs_b_ts = ~spi_cs_en;
-  assign qspi_dqo_ts  = ~spi_sd_en;
-
-  // On VCU128/VCU118/ZCU102, SPI ports are not directly available
-`ifdef USE_STARTUPE3
-  STARTUPE3 #(
-    .PROG_USR("FALSE"),
-    .SIM_CCLK_FREQ(0.0)
-  ) i_startupe3 (
-    .CFGCLK     ( ),
-    .CFGMCLK    ( ),
-    .DI         ( qspi_dqi ),
-    .EOS        ( ),
-    .PREQ       ( ),
-    .DO         ( qspi_dqo ),
-    .DTS        ( qspi_dqo_ts ),
-    .FCSBO      ( qspi_cs_b[1] ),
-    .FCSBTS     ( qspi_cs_b_ts[1] ),
-    .GSR        ( 1'b0 ),
-    .GTS        ( 1'b0 ),
-    .KEYCLEARB  ( 1'b1 ),
-    .PACK       ( 1'b0 ),
-    .USRCCLKO   ( qspi_clk ),
-    .USRCCLKTS  ( qspi_clk_ts ),
-    .USRDONEO   ( 1'b1 ),
-    .USRDONETS  ( 1'b1 )
-  );
-`else
-`ifdef USE_STARTUPE2
-  (*keep="TRUE"*)
-  STARTUPE2 #(
-    .PROG_USR("FALSE"),
-    .SIM_CCLK_FREQ(0.0)
-    ) i_startupe2 (
-    .CFGCLK     ( ),
-    .CFGMCLK    ( ),
-    .EOS        ( ),
-    .PREQ       ( ),
-    .CLK        ( 1'b0 ),
-    .GSR        ( 1'b0 ),
-    .GTS        ( 1'b0 ),
-    .KEYCLEARB  ( 1'b0 ),
-    .PACK       ( 1'b0 ),
-    .USRCCLKO   ( spi_sck_soc ),
-    .USRCCLKTS  ( 1'b0 ),
-    .USRDONEO   ( 1'b0 ),
-    .USRDONETS  ( 1'b0 )
-  );
-`else
-  IOBUF #(
-    .DRIVE        ( 12        ),
-    .IBUF_LOW_PWR ( "FALSE"   ),
-    .IOSTANDARD   ( "DEFAULT" ),
-    .SLEW         ( "FAST"    )
-  ) i_spih_sck_iobuf (
-    .O  (  ),
-    .IO ( spih_sck_o  ),
-    .I  ( spi_sck_soc ),
-    .T  ( ~spi_sck_en )
-  );
-`endif
-
-  IOBUF #(
-    .DRIVE        ( 12        ),
-    .IBUF_LOW_PWR ( "FALSE"   ),
-    .IOSTANDARD   ( "DEFAULT" ),
-    .SLEW         ( "FAST"    )
-  ) i_spih_csb_iobuf (
-    .O  (  ),
-    .IO ( spih_csb_o ),
-    .I  ( spi_cs_soc [1] ),
-    .T  ( ~spi_cs_en [1] )
-  );
-
-  for (genvar i = 0; i < 4; ++i) begin : gen_qspi_iobufs
-    IOBUF #(
-      .DRIVE        ( 12        ),
-      .IBUF_LOW_PWR ( "FALSE"   ),
-      .IOSTANDARD   ( "DEFAULT" ),
-      .SLEW         ( "FAST"    )
-    ) i_spih_sd_iobuf (
-      .O  ( spi_sd_spih_in [i] ),
-      .IO ( spih_sd_io     [i] ),
-      .I  ( spi_sd_soc_out [i] ),
-      .T  ( ~spi_sd_en     [i] )
-    );
-  end
-`endif
-`endif
+  // Leave I2C bus floating / not connected:
+  // from Cheshire point of view, the bus stays idle-high.
+  assign i2c_sda_soc_in = 1'b1;
+  assign i2c_scl_soc_in = 1'b1;
 
   /////////////////////////
   // "RTC" Clock Divider //
@@ -405,37 +262,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
       rtc_clk_q <= rtc_clk_d;
     end
   end
-
-  //////////
-  // LEDs //
-  //////////
-
-// `ifdef USE_NUM_LED
-//   assign led_o = reg2hw.leds;
-// `endif
-
-  /////////////////
-  // Fan Control //
-  /////////////////
-
-`ifdef USE_FAN
-  logic [3:0] fan_setting;
-
-`ifdef USE_CFG_REGS
-  assign fan_setting       = reg2hw.fan_ctl;
-  assign hw2reg.fan_ctl.d  = fan_sw;
-  assign hw2reg.fan_ctl.de = ~reg2hw.fan_sw_override;
-`else
-  assign fan_setting = fan_sw;
-`endif
-
-  fan_ctrl i_fan_ctrl (
-    .clk_i          ( soc_clk     ),
-    .rst_ni         ( rst_n       ),
-    .pwm_setting_i  ( fan_setting ),
-    .fan_pwm_o      ( fan_pwm     )
-  );
-`endif
 
   //////////////
   // DRAM MIG //
@@ -595,24 +421,15 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .usb_dp_oe_o ()
   );
 
-  // logic [31:0] axi_gpio_i, axi_gpio_o, axi_gpio_en;
-
-  // logic START_wire, STOP_wire, TEST_wire, NEW_BATCH_wire, NEW_EPOCH_wire, SPI_EN_CONF;
-
-  // assign NEW_EPOCH_wire  = axi_gpio_o[0];
-  // assign STOP_wire       = axi_gpio_o[1];
-  // assign TEST_wire       = axi_gpio_o[2];
-  // assign NEW_BATCH_wire  = axi_gpio_o[3];
-
-  // assign axi_gpio_i[4]       = batch_done;
-  // assign axi_gpio_i[5]       = epoch_done;
-
-  logic [31:0] axi_batch_size, axi_n_samples, axi_do_eprop, infer_count;
-  // logic [31:0] reckon_ctrl   [5:0];
+  logic clk15;
+  logic SPI_EN_CONF;
+  logic [31:0] axi_batch_size, axi_n_samples, axi_do_eprop, axi_n_epochs, infer_count;
+  logic [11:0] infer_count_12b;
+  
   logic [31:0] reckon_ctrl_i [3:0];
   logic [31:0] reckon_ctrl_o [1:0];
   
-  logic [17:0] AERAM_add;
+  logic [17:0] AERAM_addr;
   logic        AERAM_clk;
   logic [31:0] AERAM_din;
   logic [31:0] AERAM_dout;
@@ -620,62 +437,66 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   logic        AERAM_rst;
   logic [3:0]  AERAM_we;
 
+  localparam AxiRegsNin  = 4;
+  localparam AxiRegsNout = 8;
+  localparam UseAxiGPIO  = 1;
+
   logic [31:0] axi_reg_o [AxiRegsNout-1:0];
   logic [31:0] axi_reg_i [AxiRegsNin-1:0 ];
 
   logic debug_axi;
 
   assign axi_batch_size   = axi_reg_o[0];
-  assign axi_n_samples    = axi_reg_o[1];
-  assign axi_do_eprop     = axi_reg_o[2];
-  assign reckon_ctrl_i[0] = axi_reg_o[3];
-  assign reckon_ctrl_i[1] = axi_reg_o[4];
-  assign reckon_ctrl_i[2] = axi_reg_o[5];
-  assign reckon_ctrl_i[3] = axi_reg_o[6];
-  assign debug_axi        = axi_reg_o[7][0];
+  assign axi_n_samples    = axi_reg_o[2];
+  assign axi_n_epochs     = axi_reg_o[1];
+  assign axi_do_eprop     = axi_reg_o[3];
+  assign reckon_ctrl_i[0] = axi_reg_o[4];
+  assign reckon_ctrl_i[1] = axi_reg_o[5];
+  assign reckon_ctrl_i[2] = axi_reg_o[6];
+  assign reckon_ctrl_i[3] = axi_reg_o[7];
 
-  assign led_o[0]        = debug_axi;
+  assign debug_axi        = |axi_do_eprop;
+  assign led_o[0]         = debug_axi;
 
-  assign axi_reg_i[0]   = infer_count;
+  assign axi_reg_i[0]   = {20'h0, infer_count_12b};
   assign axi_reg_i[1]   = reckon_ctrl_o[0];
   assign axi_reg_i[2]   = reckon_ctrl_o[1];
+  assign axi_reg_i[3]   = 32'hcafebabe;
 
   reckon_axi_top #(
     .ADDR_WIDTH(16)
   ) reckon_axi_top_0 (
-    .clk_i (clk15),
-    .rst_i (~rst_n),
-    .SPI_EN_CONF(SPI_EN_CONF),
-    // .epoch_done(epoch_done),
-    // .STOP(STOP_wire),
-    // .TEST(TEST_wire),
-    // .batch_done(batch_done),
-    // .NEW_BATCH(NEW_BATCH_wire),
-    // .NEW_EPOCH(NEW_EPOCH_wire),
-    .reckon_ctrl_i_0(reckon_ctrl_i[0]),
-    .reckon_ctrl_i_1(reckon_ctrl_i[1]),
-    .reckon_ctrl_i_2(reckon_ctrl_i[2]),
-    .reckon_ctrl_i_3(reckon_ctrl_i[3]),
-    .reckon_ctrl_o_0(reckon_ctrl_o[0]),
-    .reckon_ctrl_o_1(reckon_ctrl_o[1]),
-    .spi_miso_wire(spi_sd_soc_in[0]),
-    .spi_mosi_wire(spi_sd_soc_out[1]),
-    .spi_sck_wire(spi_sck_soc),
-    .BRAM_PORTA_addr(AERAM_add),
-    .BRAM_PORTA_clk(AERAM_clk),
-    .BRAM_PORTA_din(AERAM_din),
-    .BRAM_PORTA_en(AERAM_cs),
-    .BRAM_PORTA_rst(AERAM_rst),
-    .BRAM_PORTA_we(AERAM_we),
-    .BRAM_PORTA_dout(AERAM_dout),
-    .infer_count_o(infer_count),
-    .batch_size_i(axi_batch_size[11:0]),
-    .n_samples_i(axi_n_samples[11:0]),
-    .do_eprop_i(axi_do_eprop[2:0])
+    .clk_i           ( clk15             ),
+    .rst_i           ( ~rst_n            ),
+    .SPI_EN_CONF     ( SPI_EN_CONF       ),
+
+    .reckon_ctrl_i_0 ( reckon_ctrl_i[0]  ),
+    .reckon_ctrl_i_1 ( reckon_ctrl_i[1]  ),
+    .reckon_ctrl_i_2 ( reckon_ctrl_i[2]  ),
+    .reckon_ctrl_i_3 ( reckon_ctrl_i[3]  ),
+    .reckon_ctrl_o_0 ( reckon_ctrl_o[0]  ),
+    .reckon_ctrl_o_1 ( reckon_ctrl_o[1]  ),
+
+    .spi_sck_wire    ( spi_sck_soc       ),
+    .spi_mosi_wire   ( spi_sd_soc_out[0] ),
+    .spi_miso_wire   ( reckon_spi_miso   ),
+
+    .BRAM_PORTA_addr ( AERAM_add         ),
+    .BRAM_PORTA_clk  ( AERAM_clk         ),
+    .BRAM_PORTA_din  ( AERAM_din         ),
+    .BRAM_PORTA_en   ( AERAM_cs          ),
+    .BRAM_PORTA_rst  ( AERAM_rst         ),
+    .BRAM_PORTA_we   ( AERAM_we          ),
+    .BRAM_PORTA_dout ( AERAM_dout        ),
+
+    .infer_count_o   ( infer_count_12b    ),
+    .batch_size_i    ( axi_batch_size[11:0] ),
+    .n_samples_i     ( axi_n_samples[11:0]  ),
+    .do_eprop_i      ( axi_do_eprop[2:0]    )
   );
 
-  axi_slv_req_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_i;
-  axi_slv_rsp_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_o;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_req_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_i;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_rsp_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_o;
 
   axi_layer #(
     .Cfg               ( FPGACfg ),
@@ -687,8 +508,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   ) axi_layer_0 (
     .clk_i             ( soc_clk ),
     .rst_ni            ( rst_n ),
-    .axi_ext_slv_req_s ( axi_slv_i ),
-    .axi_ext_slv_rsp_s ( axi_slv_o ),
+    .slv_req           ( axi_slv_i ),
+    .slv_rsp           ( axi_slv_o ),
     .axi_reg_o         ( axi_reg_o ),
     .axi_reg_i         ( axi_reg_i ),
     .axi_gpio_o        ( ),

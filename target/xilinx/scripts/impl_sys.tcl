@@ -13,7 +13,7 @@ source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
 # Addtional args provide IPs
-# read_ip [exec realpath {*}[lrange $argv 2 end]]
+# read_ip [exec realpath {*}[lrange $argv 2 end]ygttde
 
 # Load constraints
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${proj}.xdc
@@ -22,7 +22,7 @@ import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${board}.x
 # Load RTL sources
 source ${xilinx_root}/scripts/add_sources.${board}.tcl
 
-# Set top module
+# Set top module d
 set_property top ${proj}_top_xilinx [current_fileset]
 update_compile_order -fileset sources_1
 

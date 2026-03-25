@@ -60,4 +60,6 @@ hs_err*
 bitfile/*
 sw/SPI_reckon/*
 ./*.log
-bitfile/*
+BITFILE/
+monitor/
+debug/

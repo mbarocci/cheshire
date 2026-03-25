@@ -36,6 +36,7 @@ export_include_dirs:
   - hw/include
   - target/xilinx/src
   - hw/axi_reckon
+  - sw/SPI_reckon/dataset
 
 sources:
   - hw/future/UsbOhciAxi4.v
@@ -68,7 +69,7 @@ sources:
       - hw/axi_reckon/rtl/BRAM_1port_we.v
       - hw/axi_reckon/rtl/RAM_wrapper_new.v
       - hw/axi_reckon/rtl/aer_decoder.v
-      - hw/axi_reckon/rtl/axi_layer.sv
+      - hw/axi_reckon/rtl/axi_layer_new.sv
       - hw/axi_reckon/rtl/axi_rf.sv
       - hw/axi_reckon/rtl/reckon_axi_top.v
       - hw/axi_reckon/rtl/reckon/lfsr_neur_stochround.v
