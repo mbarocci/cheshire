@@ -203,9 +203,9 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   // Internal SPI slave   //
   //////////////////////////
 
-  logic       spi_sck_soc;
-  logic [1:0] spi_cs_soc;
-  logic [3:0] spi_sd_soc_out;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic       spi_sck_soc;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [1:0] spi_cs_soc;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [3:0] spi_sd_soc_out;
   logic [3:0] spi_sd_soc_in;
 
   logic       spi_sck_en;

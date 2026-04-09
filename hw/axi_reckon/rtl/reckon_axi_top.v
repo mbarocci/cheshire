@@ -47,6 +47,7 @@ wire        SPI_TIMING;
 wire BATCH_DONE_wire, EPOCH_DONE_wire;
 
 wire [ADDR_WIDTH-1:0] AXI_BRAM_ADDR;
+wire [31:0] BRAM_PORTA_dout_a, BRAM_PORTA_dout_b;
 
 wire AERIN_TAR_EN;
 wire TIME_TICK;
@@ -164,6 +165,8 @@ reckon #(
 assign DIN  = TEST_sync ? DIN_VAL : DIN_TRAIN;  
 assign CS_V = TEST_sync ? CS : 1'b0;
 assign CS_T = TEST_sync ? 1'b0 : CS;
+assign BRAM_PORTA_dout = TEST_sync ? BRAM_PORTA_dout_a : BRAM_PORTA_dout_b;
+
 
 aer_decoder #(
     .ADDR_WIDTH(ADDR_WIDTH)
@@ -234,7 +237,7 @@ BRAM2_we_inst #(
     .REGENA    (),
     .RSTB      (),
     .REGENB    (),
-    .DOUTA(BRAM_PORTA_dout),
+    .DOUTA(BRAM_PORTA_dout_b),
     .DOUTB(DIN_TRAIN)
 );
 
@@ -259,7 +262,7 @@ BRAM2_we_inst #(
     .REGENA    (),
     .RSTB      (),
     .REGENB    (),
-    .DOUTA(BRAM_PORTA_dout),
+    .DOUTA(BRAM_PORTA_dout_a),
     .DOUTB(DIN_VAL)
 );
 endmodule

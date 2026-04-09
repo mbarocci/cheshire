@@ -58,8 +58,9 @@ vivado*
 *.mif
 hs_err*
 bitfile/*
-sw/SPI_reckon/*
+sw/reckon/test/*
 ./*.log
 BITFILE/
 monitor/
 debug/
+sw/reckon/dataset/

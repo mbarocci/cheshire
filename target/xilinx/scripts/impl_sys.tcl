@@ -13,7 +13,7 @@ source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
 # Addtional args provide IPs
-# read_ip [exec realpath {*}[lrange $argv 2 end]ygttde
+# read_ip [exec realpath {*}[lrange $argv 2 end]ygttdefr
 
 # Load constraints
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${proj}.xdc
