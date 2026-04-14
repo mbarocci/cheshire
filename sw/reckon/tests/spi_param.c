@@ -1,6 +1,6 @@
 #include "sw/device/lib/dif/dif_spi_host.h"
 // #include "reckon/reckon.h"
-#include "reckon/reckon_params.h"
+#include "reckon/reckon_params_vec.h"
 
 #include "regs/cheshire.h"
 #include "params.h"
