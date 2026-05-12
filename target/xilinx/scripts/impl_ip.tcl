@@ -130,7 +130,7 @@ switch $proj {
                     CONFIG.CLK_IN1_BOARD_INTERFACE {Custom} \
                     CONFIG.RESET_BOARD_INTERFACE {Custom} \
                     CONFIG.USE_RESET {true} \
-                    CONFIG.PRIM_SOURCE {No_Buffer} \
+                    CONFIG.PRIM_SOURCE {Differential_clock_capable_pin} \
                     CONFIG.PRIM_IN_FREQ {125.000} \
                     CONFIG.CLKOUT1_USED {true} \
                     CONFIG.CLKOUT2_USED {true} \

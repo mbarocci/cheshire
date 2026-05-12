@@ -88,6 +88,8 @@ $(eval $(call chs_sw_gen_hdr_rule,axi_rt,$(AXIRTROOT)/src/regs/axi_rt.hjson $(AX
 # Generate headers for OT peripherals in the bendered repo itself
 CHS_SW_GEN_HDRS += $(OTPROOT)/.generated
 
+include $(CHS_ROOT)/sw/reckon/reckon.mk
+
 ###############
 # Compilation #
 ###############

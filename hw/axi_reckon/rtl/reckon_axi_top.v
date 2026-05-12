@@ -1,16 +1,12 @@
 module reckon_axi_top #(
-    parameter ADDR_WIDTH = 16
+    parameter ADDR_WIDTH    = 16,
+    parameter TRAIN_DS_PATH = "",
+    parameter VAL_DS_PATH   = "",
 ) (
     input wire clk_i,
     input wire rst_i,
 
     output wire SPI_EN_CONF,
-    // output wire EPOCH_DONE,
-    // input  wire STOP,
-    // input  wire TEST,
-    // input  wire NEW_BATCH,
-    // input  wire NEW_EPOCH,
-    // output wire BATCH_DONE,
     output wire [31:0] reckon_ctrl_o_0,
     output wire [31:0] reckon_ctrl_o_1,
     
@@ -220,8 +216,8 @@ BRAM2_we_inst #(
     .NB_COL(4),
     .COL_WIDTH(8),
     .RAM_WIDTH(32),
-    .RAM_DEPTH((2**(ADDR_WIDTH-2))),
-    .INIT_FILE("t200_v200/aer_train_ds_wlabels.mem")
+    .RAM_DEPTH((2**(ADDR_WIDTH))),
+    .INIT_FILE(TRAIN_DS_PATH)
 ) BRAM_AERDATA_TRAIN_0 (
     .ADDRA(AXI_BRAM_ADDR),
     .ADDRB(RAM_ADDR),
@@ -245,8 +241,8 @@ BRAM2_we_inst #(
     .NB_COL(4),
     .COL_WIDTH(8),
     .RAM_WIDTH(32),
-    .RAM_DEPTH((2**(ADDR_WIDTH-2))),
-    .INIT_FILE("t200_v200/aer_val_ds_wlabels.mem")
+    .RAM_DEPTH((2**(ADDR_WIDTH))),
+    .INIT_FILE(VAL_DS_PATH)
 ) BRAM_AERDATA_VAL_0 (
     .ADDRA(AXI_BRAM_ADDR),
     .ADDRB(RAM_ADDR),

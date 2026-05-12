@@ -52,44 +52,12 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `endif
 `endif
 
-// `ifdef USE_I2C
-//   inout  wire   i2c_scl_io,
-//   inout  wire   i2c_sda_io,
-// `endif
-
-// `ifdef USE_SD
-//   input  logic        sd_cd_i,
-//   output logic        sd_cmd_o,
-//   inout  wire  [3:0]  sd_d_io,
-//   output logic        sd_reset_o,
-//   output logic        sd_sclk_o,
-// `endif
-
-// `ifdef USE_FAN
-//   input  logic [3:0]  fan_sw,
-//   output logic        fan_pwm,
-// `endif
-
-// `ifdef USE_VGA
-//   // VGA Colour signals
-//   output logic        vga_hsync_o,
-//   output logic        vga_vsync_o,
-//   output logic [4:0]  vga_red_o,
-//   output logic [5:0]  vga_green_o,
-//   output logic [4:0]  vga_blue_o,
-// `endif
-
 `ifdef USE_DDR4
   `DDR4_INTF(Ddr4CsNWidth, Ddr4DmDbiNWidth, Ddr4DqWidth, Ddr4DqsWidth)
 `endif
 `ifdef USE_DDR3
   `DDR3_INTF
 `endif
-
-// `ifdef USE_USB
-//   inout  wire [UsbNumPorts-1:0] usb_dm_io,
-//   inout  wire [UsbNumPorts-1:0] usb_dp_io,
-// `endif
 
   output logic  uart_tx_o_cp2108,
   output logic  uart_tx_o_gpio,
@@ -463,8 +431,13 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign axi_reg_i[2]   = reckon_ctrl_o[1];
   assign axi_reg_i[3]   = 32'hcafebabe;
 
+  localparam P_TRAIN_DS = TRAIN_DS;
+  localparam P_VAL_DS   = VAL_DS;
+
   reckon_axi_top #(
-    .ADDR_WIDTH(16)
+    .ADDR_WIDTH(16),
+    .TRAIN_DS_PATH(P_TRAIN_DS),
+    .VAL_DS_PATH(P_VAL_DS)
   ) reckon_axi_top_0 (
     .clk_i           ( clk15             ),
     .rst_i           ( ~rst_n            ),
@@ -481,7 +454,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .spi_mosi_wire   ( spi_sd_soc_out[0] ),
     .spi_miso_wire   ( reckon_spi_miso   ),
 
-    .BRAM_PORTA_addr ( AERAM_add         ),
+    .BRAM_PORTA_addr ( AERAM_addr        ),
     .BRAM_PORTA_clk  ( AERAM_clk         ),
     .BRAM_PORTA_din  ( AERAM_din         ),
     .BRAM_PORTA_en   ( AERAM_cs          ),
@@ -554,7 +527,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .BRAM_PORTA_dout(AERAM_dout),
     .CLK_IN1_D_clk_n(sys_clk_n),
     .CLK_IN1_D_clk_p(sys_clk_p),
-    .clk_48  ( ),
+    .clk_48   ( ),
     .clk_50   ( soc_clk  ),
     .clk_20   ( ),
     .clk_15   ( clk15),
@@ -566,6 +539,14 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .probe_in1  ( debug_axi     )
   );
 `else
+
+  assign AERAM_addr = 18'b0;
+  assign AERAM_clk  = 1'b0;
+  assign AERAM_cs   = 1'b0;
+  assign AERAM_din  = 1'b0;
+  assign AERAM_we   = 4'b0;
+  assign AERAM_rst  = 1'b0;
+
   IBUFDS #(
     .IBUF_LOW_PWR ("FALSE")
   ) i_bufds_sys_clk (
@@ -575,9 +556,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   );
 
   clkwiz i_clkwiz (
-    .clk_in1  ( sys_clk ),
-    .reset    ( '0 ),
-    .locked   ( ),    
+    .CLK_IN1_D_clk_n(sys_clk_n),
+    .CLK_IN1_D_clk_p(sys_clk_p),
     .clk_48  ( ),
     .clk_50   ( soc_clk  ),
     .clk_20   ( ),
