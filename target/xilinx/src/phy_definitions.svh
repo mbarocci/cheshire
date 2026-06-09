@@ -48,16 +48,13 @@
   `define USE_RESET
   `define USE_JTAG
   // `define USE_DDR4
-  // `define USE_VIO
+  `define USE_VIO
   // `define USE_MPSOC
-  `define USE_NUM_LED 1
-  `ifndef USE_MPSOC
-    `define TRAIN_DS "aertrain_ds.mem"
-    `define VAL_DS "aerval_ds.mem"
-  `else
-    `define TRAIN_DS_PATH ""
-    `define VAL_DS_PATH ""
+  `define USE_NUM_LED 2
   `endif
+
+`define TRAIN_DS "aertrain_ds.mem"
+`define VAL_DS "aerval_ds.mem"
 
 /////////////////////
 // DERIVED CONFIGS //

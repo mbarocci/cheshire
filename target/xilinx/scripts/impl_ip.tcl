@@ -127,29 +127,41 @@ switch $proj {
             }
             zcu102 {
                 set_property -dict [list \
-                    CONFIG.CLK_IN1_BOARD_INTERFACE {Custom} \
-                    CONFIG.RESET_BOARD_INTERFACE {Custom} \
-                    CONFIG.USE_RESET {true} \
-                    CONFIG.PRIM_SOURCE {Differential_clock_capable_pin} \
-                    CONFIG.PRIM_IN_FREQ {125.000} \
-                    CONFIG.CLKOUT1_USED {true} \
-                    CONFIG.CLKOUT2_USED {true} \
-                    CONFIG.CLKOUT3_USED {true} \
-                    CONFIG.CLKOUT4_USED {true} \
-                    CONFIG.CLK_OUT1_PORT {clk_50} \
-                    CONFIG.CLK_OUT2_PORT {clk_48} \
-                    CONFIG.CLK_OUT3_PORT {clk_20} \
-                    CONFIG.CLK_OUT4_PORT {clk_15} \
-                    CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {50.000} \
-                    CONFIG.CLKOUT1_JITTER {116.415} \
-                    CONFIG.CLKOUT1_PHASE_ERROR {77.836} \
-                    CONFIG.CLKOUT2_JITTER {117.369} \
-                    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {48.000} \
-                    CONFIG.CLKOUT3_JITTER {140.023} \
-                    CONFIG.CLKOUT3_REQUESTED_OUT_FREQ {20.000} \
-                    CONFIG.CLKOUT4_JITTER {160.570} \
-                    CONFIG.CLKOUT4_PHASE_ERROR {77.836} \
-                    CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {15.000} \
+			  CONFIG.AUTO_PRIMITIVE {MMCM} \
+			  CONFIG.CLKIN1_JITTER_PS {80.0} \
+			  CONFIG.CLKOUT1_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT1_JITTER {196.543} \
+			  CONFIG.CLKOUT1_PHASE_ERROR {222.305} \
+			  CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {50} \
+			  CONFIG.CLKOUT2_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT2_JITTER {239.833} \
+			  CONFIG.CLKOUT2_PHASE_ERROR {222.305} \
+			  CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {15} \
+			  CONFIG.CLKOUT2_USED {true} \
+			  CONFIG.CLKOUT3_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT4_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT5_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT6_DRIVES {BUFGCE} \
+			  CONFIG.CLKOUT7_DRIVES {BUFGCE} \
+			  CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
+			  CONFIG.MMCM_BANDWIDTH {OPTIMIZED} \
+			  CONFIG.MMCM_CLKFBOUT_MULT_F {48.000} \
+			  CONFIG.MMCM_CLKIN1_PERIOD {8.000} \
+			  CONFIG.MMCM_CLKOUT0_DIVIDE_F {24.000} \
+			  CONFIG.MMCM_CLKOUT1_DIVIDE {80} \
+			  CONFIG.MMCM_COMPENSATION {AUTO} \
+			  CONFIG.MMCM_DIVCLK_DIVIDE {5} \
+			  CONFIG.NUM_OUT_CLKS {2} \
+			  CONFIG.OPTIMIZE_CLOCKING_STRUCTURE_EN {true} \
+			  CONFIG.PRIMITIVE {Auto} \
+			  CONFIG.PRIM_IN_FREQ {125} \
+			  CONFIG.SECONDARY_SOURCE {Single_ended_clock_capable_pin} \
+			  CONFIG.USE_LOCKED {false} \
+			  CONFIG.USE_PHASE_ALIGNMENT {true} \
+			  CONFIG.USE_RESET {false} \
+			  CONFIG.USE_SAFE_CLOCK_STARTUP {true} \
+			  CONFIG.CLK_OUT1_PORT {clk_50} \
+			  CONFIG.CLK_OUT2_PORT {clk_15} \
                     ] [get_ips $proj]
             }
             default { nocfgexit $proj $board }

@@ -1,7 +1,7 @@
 module reckon_axi_top #(
     parameter ADDR_WIDTH    = 16,
     parameter TRAIN_DS_PATH = "",
-    parameter VAL_DS_PATH   = "",
+    parameter VAL_DS_PATH   = ""
 ) (
     input wire clk_i,
     input wire rst_i,
@@ -18,6 +18,7 @@ module reckon_axi_top #(
     output wire spi_miso_wire,
     input wire spi_mosi_wire,
     input wire spi_sck_wire,
+    input wire spi_cs_wire,
 
     input wire  [ADDR_WIDTH+1:0] BRAM_PORTA_addr,
     input wire                   BRAM_PORTA_clk,
@@ -32,7 +33,25 @@ module reckon_axi_top #(
     input wire [11:0] batch_size_i,
     input wire [11:0] n_samples_i,
     input wire [11:0] n_epochs_i,
-    input wire [2:0 ] do_eprop_i
+    input wire [2:0 ] do_eprop_i,
+
+    output wire [31:0] cycles_counter_0,
+    output wire [31:0] cycles_counter_1,
+    output wire [31:0] cycles_counter_2,
+    output wire [31:0] cycles_counter_3,
+    output wire [31:0] cycles_counter_4,
+    output wire [31:0] cycles_counter_5,
+    output wire [31:0] cycles_counter_6,
+    output wire [31:0] cycles_counter_7
+
+    input wire [31:0] cycles_config_0,
+    input wire [31:0] cycles_config_1,
+    input wire [31:0] cycles_config_2,
+    input wire [31:0] cycles_config_3,
+    input wire [31:0] cycles_config_4,
+    input wire [31:0] cycles_config_5,
+    input wire [31:0] cycles_config_6,
+    input wire [31:0] cycles_config_7
 
 );
 
@@ -116,6 +135,29 @@ assign N_SAMPLES  = N_SAMPLES_sync2;
 assign BATCH_SIZE = BATCH_SIZE_sync2;
 assign N_EPOCHS   = N_EPOCHS_sync2;
 
+(* ASYNC_REG = "TRUE" *) reg [31:0] counter_config [7:0], counter_config_sync [7:0];
+
+(* ASYNC_REG = "TRUE" *) 
+always @(posedge clk_i) begin
+    cycles_config_sync[0] <= cycles_config_0;
+    cycles_config_sync[1] <= cycles_config_1;
+    cycles_config_sync[2] <= cycles_config_2;
+    cycles_config_sync[3] <= cycles_config_3;
+    cycles_config_sync[4] <= cycles_config_4;
+    cycles_config_sync[5] <= cycles_config_5;
+    cycles_config_sync[6] <= cycles_config_6;
+    cycles_config_sync[7] <= cycles_config_7;
+
+    counter_config[0] <= cycles_config_sync[0];
+    counter_config[1] <= cycles_config_sync[1];
+    counter_config[2] <= cycles_config_sync[2];
+    counter_config[3] <= cycles_config_sync[3];
+    counter_config[4] <= cycles_config_sync[4];
+    counter_config[5] <= cycles_config_sync[5];
+    counter_config[6] <= cycles_config_sync[6];
+    counter_config[7] <= cycles_config_sync[7];    
+end
+
 reckon #(
     .N(256),
     .M(8)
@@ -129,6 +171,7 @@ reckon #(
     .SCK (spi_sck_wire),
     .MOSI(spi_mosi_wire),
     .MISO(spi_miso_wire),
+    .CSN  (spi_cs_wire),
 
     // Input bus and control inputs ------------------
     .AERIN_ADDR(AERIN_ADDR),
@@ -162,7 +205,6 @@ assign DIN  = TEST_sync ? DIN_VAL : DIN_TRAIN;
 assign CS_V = TEST_sync ? CS : 1'b0;
 assign CS_T = TEST_sync ? 1'b0 : CS;
 assign BRAM_PORTA_dout = TEST_sync ? BRAM_PORTA_dout_a : BRAM_PORTA_dout_b;
-
 
 aer_decoder #(
     .ADDR_WIDTH(ADDR_WIDTH)
@@ -209,7 +251,25 @@ aer_decoder #(
     .BATCH_DONE(BATCH_DONE),
     .EPOCH_DONE(EPOCH_DONE),
 
-    .infer_count_o(infer_count_o)
+    .infer_count_o(infer_count_o),
+
+    .cycles_counter_0(cycles_counter_0),
+    .cycles_counter_1(cycles_counter_1),
+    .cycles_counter_2(cycles_counter_2),
+    .cycles_counter_3(cycles_counter_3),
+    .cycles_counter_4(cycles_counter_4),
+    .cycles_counter_5(cycles_counter_5),
+    .cycles_counter_6(cycles_counter_6),
+    .cycles_counter_7(cycles_counter_7),
+
+    .counter_config_0(counter_config[0]),
+    .counter_config_1(counter_config[1]),
+    .counter_config_2(counter_config[2]),
+    .counter_config_3(counter_config[3]),
+    .counter_config_4(counter_config[4]),
+    .counter_config_5(counter_config[5]),
+    .counter_config_6(counter_config[6]),
+    .counter_config_7(counter_config[7])
 );
 
 BRAM2_we_inst #(

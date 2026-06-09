@@ -53,7 +53,7 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0
 set_property -dict [list \
   CONFIG.CLK_IN1_BOARD_INTERFACE {Custom} \
   CONFIG.RESET_BOARD_INTERFACE {Custom} \
-  CONFIG.USE_RESET {true} \
+  CONFIG.USE_RESET {false} \
   CONFIG.PRIM_SOURCE {Differential_clock_capable_pin} \
   CONFIG.PRIM_IN_FREQ {125.000} \
   CONFIG.CLKOUT1_USED {true} \

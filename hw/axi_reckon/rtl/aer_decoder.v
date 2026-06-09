@@ -40,7 +40,25 @@ module aer_decoder #(
   input  wire [31:0]            DIN,
   output wire [ADDR_WIDTH-1:0]  RAM_ADDR,
 
-  output wire [11:0] infer_count_o
+  output wire [11:0] infer_count_o,
+
+  output reg [31:0] cycles_counter_0,
+  output reg [31:0] cycles_counter_1,
+  output reg [31:0] cycles_counter_2,
+  output reg [31:0] cycles_counter_3,
+  output reg [31:0] cycles_counter_4,
+  output reg [31:0] cycles_counter_5,
+  output reg [31:0] cycles_counter_6,
+  output reg [31:0] cycles_counter_7
+
+  input wire [31:0] cycles_config_0,
+  input wire [31:0] cycles_config_1,
+  input wire [31:0] cycles_config_2,
+  input wire [31:0] cycles_config_3,
+  input wire [31:0] cycles_config_4,
+  input wire [31:0] cycles_config_5,
+  input wire [31:0] cycles_config_6,
+  input wire [31:0] cycles_config_7
 );
 
   reg [11:0] data_aer_in_reg, tick_aer_in_reg;
@@ -570,10 +588,32 @@ module aer_decoder #(
   end
 
   /*******************************/
-  /******DEBUG UNIT - AXI RF******/
+  /******COUNTERS - AXI RF******/
   /*******************************/
   
-  // wire infer_count_dbg;
+  localparam N_COUNTERS  = 8;
+  localparam N_STATES    = 8;
+  localparam ACTIVE_BITS = 8;
+
+  localparam BIT_IDLE   = IDLE;
+  localparam BIT_READM  = READM;
+  localparam BIT_TICK   = TICK;
+  localparam BIT_SPIKE  = SPIKE;
+  localparam BIT_LABEL  = LABEL;
+  localparam BIT_END_S  = END_S;
+  localparam BIT_END_B  = END_B;
+  localparam BIT_END_E  = END_E;
+  localparam BIT_N_IDLE = 8;
+  // localparam BITX       = 9;
+  // localparam BITX       = 10;
+  // localparam BITX       = 11;
+  // localparam BITX       = 12;
+  // localparam BITX       = 13;
+  // localparam BITX       = 14;
+  // localparam BITX       = 15;
+
+  reg [31:0] cycles_counter [N_COUNTERS-1:0];
+  reg [31:0] counter_config [N_COUNTERS-1:0];
   // wire cnt_epochs_dbg;
   // wire ram_addr_o_dbg;
   
@@ -585,18 +625,29 @@ module aer_decoder #(
   // assign cnt_epochs_dbg  = (curr_state == END_E);
   // assign ram_addr_dbg  = (mem_c_state == MEM_READ2) && (mem_n_state == MEM_IDLE);
 
-  // always @(posedge CLK) begin
-  //   if (RST_sync) begin
-  //     infer_count_o_reg <= 12'b0;
-  //     cnt_epochs_o_reg  <= 12'b0;
-  //   end else begin
-  //     if (infer_count_dbg) infer_count_o_reg <= infer_count;
-  //     if (cnt_epochs_dbg)  cnt_epochs_o_reg  <= cnt_epochs;
-  //     if (ram_addr_dbg)    ram_addr_o_reg    <= RAM_ADDR;
-  //     samples_batch_o_reg <= BATCH_SIZE_sync;
-  //     samples_epoch_o_reg <= N_SAMPLES_sync;
-  //   end
-  // end 
+  always @(posedge CLK) begin
+    if (RST_sync) begin
+      cycles_counter <= 'b0;
+      counter_config <= 'b0;
+    end else begin
+      for (integer i = 0; i < N_COUNTERS; i = i + 1) begin
+        if (counter_config[i][ACTIVE_BITS-1:0] != {ACTIVE_BITS{1'b0}}) begin
+          if (cycles_config[i][BIT_N_IDLE]) begin
+            cycles_counter[i] <= (curr_state != IDLE) ? cycles_counter[i] + 32'd1 : cycles_counter[i];
+          end else begin
+            if cycles_config[i][BIT_IDLE]   && (curr_state == IDLE)   cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_READM]  && (curr_state == READM)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_TICK]   && (curr_state == TICK)   cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_SPIKE]  && (curr_state == SPIKE)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_LABEL]  && (curr_state == LABEL)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_END_S]  && (curr_state == END_S)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_END_B]  && (curr_state == END_B)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+            if cycles_config[i][BIT_END_E]  && (curr_state == END_E)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
+          end
+        end
+      end
+    end
+  end 
 
   // // assign infer_count_o = infer_count_o_reg;
   // assign cnt_epochs_o  = cnt_epochs_o_reg;

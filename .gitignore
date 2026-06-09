@@ -58,7 +58,8 @@ vivado*
 *.mif
 hs_err*
 bitfile/*
-sw/reckon/test/*
+sw/reckon/test/xheep
+
 ./*.log
 BITFILE/
 monitor/

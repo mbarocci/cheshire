@@ -19,7 +19,11 @@ module axi_layer import cheshire_pkg::*; #
   output logic [31:0] axi_reg_o [AxiRegsNout-1:0],
   input  logic [31:0] axi_reg_i [AxiRegsNin-1:0],
   output logic [31:0] axi_gpio_o,
-  input  logic [31:0] axi_gpio_i
+  input  logic [31:0] axi_gpio_i,
+
+  input wire [31:0]  cycles_counter [7:0],
+
+  output wire [31:0] counter_config [7:0]
 );
 
   localparam N1 = AxiRegsNin  == 0 ? 1 : AxiRegsNin;
@@ -248,8 +252,18 @@ assign lite_resp.r_valid     = s_axi_lite_rf_rvalid;
     .in_reg24(in_reg[24]), .in_reg25(in_reg[25]), .in_reg26(in_reg[26]), .in_reg27(in_reg[27]),
     .in_reg28(in_reg[28]), .in_reg29(in_reg[29]), .in_reg30(in_reg[30]), .in_reg31(in_reg[31]),
 
+    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
+    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
+    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
+    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
+
     .out_reg0(out_reg[0]), .out_reg1(out_reg[1]), .out_reg2(out_reg[2]), .out_reg3(out_reg[3]),
     .out_reg4(out_reg[4]), .out_reg5(out_reg[5]), .out_reg6(out_reg[6]), .out_reg7(out_reg[7]),
+
+    .counter_config_0(counter_config[0]), .counter_config_1(counter_config[1]),
+    .counter_config_2(counter_config[2]), .counter_config_3(counter_config[3]),
+    .counter_config_4(counter_config[4]), .counter_config_5(counter_config[5]),
+    .counter_config_6(counter_config[6]), .counter_config_7(counter_config[7]),
 
     .gpio_o(gpio_o),
     .gpio_i(gpio_i)

@@ -7,20 +7,22 @@
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 # Paul Scheffler <cykoenig@iis.ee.ethz.ch>
 
-# Initialize implementation
+# Iniftialize implementation
 set xilinx_root [file dirname [file dirname [file normalize [info script]]]]
 source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
-# Addtional args provide IPs
-# read_ip [exec realpath {*}[lrange $argv 2 end]ygttdefr
+# dsdggfAddtional args provide IPs
+read_ip [exec realpath {*}[lrange $argv 2 end]] 
 
-# Load constraints
+# Lsoad constraintrs
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${proj}.xdc
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${board}.xdc
 
 # Load RTL sources
 source ${xilinx_root}/scripts/add_sources.${board}.tcl
+add_files -norecurse ${xilinx_root}/memfile/aerval_ds.mem
+add_files -norecurse ${xilinx_root}/memfile/aertrain_ds.mem
 
 # Set top module d
 set_property top ${proj}_top_xilinx [current_fileset]
@@ -34,10 +36,6 @@ if {[file exists "${xilinx_root}/scripts/chs-bd-${board}.tcl"]} {
 } else {
     puts "Warning: ${xilinx_root}/scripts/chs-bd-${board}.tcl not found -- skipping block design for ${board}."
 }
-
-# export_ip_user_files -of_objects [get_files /home/michelangelo/cheshire/target/xilinx/build/zcu102.cheshire/cheshire.srcs/sources_1/bd/zcu102_mpsoc/zcu102_mpsoc.bd] -no_script -sync -force -quiet
-# create_ip_run [get_files -of_objects [get_fileset sources_1] /home/michelangelo/cheshire/target/xilinx/build/zcu102.cheshire/cheshire.srcs/sources_1/bd/zcu102_mpsoc/zcu102_mpsoc.bd]
-# launch_runs zcu102_mpsoc_axi_bram_ctrl_0_0_synth_1 zcu102_mpsoc_clk_wiz_0_0_synth_1 zcu102_mpsoc_proc_sys_reset_0_0_synth_1 zcu102_mpsoc_smartconnect_0_0_synth_1 zcu102_mpsoc_vio_0_0_synth_1 zcu102_mpsoc_zynq_ultra_ps_e_0_0_synth_1
 
 # Set synthesis propertiesl
 # TODO: investigate resource-affordable retiming
@@ -84,3 +82,5 @@ file copy -force ${project_root}/${proj}.runs/impl_1/cheshire_top_xilinx.bit \
     ${xilinx_root}/out/${proj}.${board}.bit
 file copy -force ${project_root}/${proj}.runs/impl_1/cheshire_top_xilinx.ltx \
     ${xilinx_root}/out/${proj}.${board}.ltx
+
+puts "FINISHED SYNTHESIS AND IMPLEMENTATION FOR ${proj} ON ${board}."

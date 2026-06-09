@@ -59,16 +59,15 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   `DDR3_INTF
 `endif
 
-  output logic  uart_tx_o_cp2108,
+  // output logic  uart_tx_o_cp2108,
   output logic  uart_tx_o_gpio,
 
-  input  logic  uart_rx_i_cp2108,
+  // input  logic  uart_rx_i_cp2108,
   input  logic  uart_rx_i_gpio
 );
 
   logic       vio_reset, vio_boot_mode_sel, vio_uart_sel;
   logic [1:0] boot_mode, vio_boot_mode;
-  logic       sys_rst;
 
   ///////////////////////
   //  Cheshire Config  //
@@ -174,7 +173,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   (* dont_touch = "yes" *) (* mark_debug = "true" *) logic       spi_sck_soc;
   (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [1:0] spi_cs_soc;
   (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [3:0] spi_sd_soc_out;
-  logic [3:0] spi_sd_soc_in;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [3:0] spi_sd_soc_in;
 
   logic       spi_sck_en;
   logic [1:0] spi_cs_en;
@@ -186,6 +185,92 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign spi_sd_soc_in[1] = reckon_spi_miso;
   assign spi_sd_soc_in[2] = 1'b0;
   assign spi_sd_soc_in[3] = 1'b0;
+
+// `ifdef USE_STARTUPE3
+//   STARTUPE3 #(
+//     .PROG_USR("FALSE"),
+//     .SIM_CCLK_FREQ(0.0)
+//   ) i_startupe3 (
+//     .CFGCLK     ( ),
+//     .CFGMCLK    ( ),
+//     .DI         ( qspi_dqi ),
+//     .EOS        ( ),
+//     .PREQ       ( ),
+//     .DO         ( qspi_dqo ),
+//     .DTS        ( qspi_dqo_ts ),
+//     .FCSBO      ( qspi_cs_b[1] ),
+//     .FCSBTS     ( qspi_cs_b_ts[1] ),
+//     .GSR        ( 1'b0 ),
+//     .GTS        ( 1'b0 ),
+//     .KEYCLEARB  ( 1'b1 ),
+//     .PACK       ( 1'b0 ),
+//     .USRCCLKO   ( qspi_clk ),
+//     .USRCCLKTS  ( qspi_clk_ts ),
+//     .USRDONEO   ( 1'b1 ),
+//     .USRDONETS  ( 1'b1 )
+//   );
+// `else
+// `ifdef USE_STARTUPE2
+//   (*keep="TRUE"*)
+//   STARTUPE2 #(
+//     .PROG_USR("FALSE"),
+//     .SIM_CCLK_FREQ(0.0)
+//     ) i_startupe2 (
+//     .CFGCLK     ( ),
+//     .CFGMCLK    ( ),
+//     .EOS        ( ),
+//     .PREQ       ( ),
+//     .CLK        ( 1'b0 ),
+//     .GSR        ( 1'b0 ),
+//     .GTS        ( 1'b0 ),
+//     .KEYCLEARB  ( 1'b0 ),
+//     .PACK       ( 1'b0 ),
+//     .USRCCLKO   ( spi_sck_soc ),
+//     .USRCCLKTS  ( 1'b0 ),
+//     .USRDONEO   ( 1'b0 ),
+//     .USRDONETS  ( 1'b0 )
+//   );
+// `else
+  // IOBUF #(
+  //   .DRIVE        ( 12        ),
+  //   .IBUF_LOW_PWR ( "FALSE"   ),
+  //   .IOSTANDARD   ( "DEFAULT" ),
+  //   .SLEW         ( "FAST"    )
+  // ) i_spih_sck_iobuf (
+  //   .O  (  ),
+  //   .IO ( spih_sck_o  ),
+  //   .I  ( spi_sck_soc ),
+  //   .T  ( ~spi_sck_en )
+  // );
+// `endif
+
+//   IOBUF #(
+//     .DRIVE        ( 12        ),
+//     .IBUF_LOW_PWR ( "FALSE"   ),
+//     .IOSTANDARD   ( "DEFAULT" ),
+//     .SLEW         ( "FAST"    )
+//   ) i_spih_csb_iobuf (
+//     .O  (  ),
+//     .IO ( spih_csb_o ),
+//     .I  ( spi_cs_soc [1] ),
+//     .T  ( ~spi_cs_en [1] )
+//   );
+
+//   for (genvar i = 0; i < 4; ++i) begin : gen_qspi_iobufs
+//     IOBUF #(
+//       .DRIVE        ( 12        ),
+//       .IBUF_LOW_PWR ( "FALSE"   ),
+//       .IOSTANDARD   ( "DEFAULT" ),
+//       .SLEW         ( "FAST"    )
+//     ) i_spih_sd_iobuf (
+//       .O  ( spi_sd_spih_in [i] ),
+//       .IO ( spih_sd_io     [i] ),
+//       .I  ( spi_sd_soc_out [i] ),
+//       .T  ( ~spi_sd_en     [i] )
+//     );
+//   end
+// `endif
+// `endif
 
   //////////////////
   // I2C Adaption //
@@ -221,8 +306,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     end
   end
 
-  always_ff @(posedge soc_clk, negedge rst_n) begin
-    if(~rst_n) begin
+  always_ff @(posedge soc_clk, posedge sys_rst[0]) begin
+    if(sys_rst[0]) begin
       counter_q <= '0;
       rtc_clk_q <= 0;
     end else begin
@@ -252,8 +337,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .Ddr4DqWidth       ( Ddr4DqWidth       ),
     .Ddr4DqsWidth      ( Ddr4DqsWidth      )
   ) i_dram_wrapper (
-    .sys_rst_i    ( sys_rst ),
-    .soc_resetn_i ( rst_n   ),
+    .sys_rst_i    ( sys_rst[0] ),
+    .soc_resetn_i ( sys_rstn[0] ),
     .soc_clk_i    ( soc_clk ),
     .dram_clk_i   ( sys_clk ),
     .soc_req_i    ( axi_dram_mst_req ),
@@ -261,7 +346,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .*
   );
 `endif
-
+  
   ////////////////
   // DRAM Delay //
   ////////////////
@@ -283,7 +368,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .MaxDelay   ( 2**15-1 ) // This is a bit backwards, but defines 16-bit delay timers.
   ) i_axi_fifo_delay_dyn (
     .clk_i      ( soc_clk ),
-    .rst_ni     ( rst_n   ),
+    .rst_ni     ( sys_rstn[0]   ),
     .aw_delay_i ( reg2hw.dram_aw_delay ),
     .w_delay_i  ( reg2hw.dram_w_delay  ),
     .b_delay_i  ( reg2hw.dram_b_delay  ),
@@ -306,6 +391,9 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   // Cheshire SoC //
   //////////////////
 
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_req_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_i;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_rsp_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_o;
+
   cheshire_soc #(
     .Cfg                ( FPGACfg ),
     .ExtHartinfo        ( '0 ),
@@ -319,7 +407,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .reg_ext_rsp_t      ( reg_rsp_t )
   ) i_cheshire_soc (
     .clk_i              ( soc_clk ),
-    .rst_ni             ( rst_n   ),
+    .rst_ni             ( sys_rstn[0]   ),
     .test_mode_i        ( test_mode_i ),
     .boot_mode_i        ( boot_mode   ),
     .rtc_i              ( rtc_clk_q       ),
@@ -379,8 +467,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 `endif
     .uart_tx_o,
     .uart_rx_i, 
-    .usb_clk_i          ( usb_clk ),
-    .usb_rst_ni         ( rst_n ), // Technically should sync to `usb_clk`, but pulse is long enough
+    .usb_clk_i          ( 1'b0 ), // Not using USB, tie off to avoid undriven input
+    .usb_rst_ni         (  ), // Technically should sync to `usb_clk`, but pulse is long enough
     .usb_dm_i (),
     .usb_dm_o (),
     .usb_dm_oe_o (),
@@ -431,8 +519,8 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign axi_reg_i[2]   = reckon_ctrl_o[1];
   assign axi_reg_i[3]   = 32'hcafebabe;
 
-  localparam P_TRAIN_DS = TRAIN_DS;
-  localparam P_VAL_DS   = VAL_DS;
+  localparam P_TRAIN_DS = `TRAIN_DS;
+  localparam P_VAL_DS   = `VAL_DS;
 
   reckon_axi_top #(
     .ADDR_WIDTH(16),
@@ -440,7 +528,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .VAL_DS_PATH(P_VAL_DS)
   ) reckon_axi_top_0 (
     .clk_i           ( clk15             ),
-    .rst_i           ( ~rst_n            ),
+    .rst_i           ( sys_rst[1]        ),
     .SPI_EN_CONF     ( SPI_EN_CONF       ),
 
     .reckon_ctrl_i_0 ( reckon_ctrl_i[0]  ),
@@ -453,6 +541,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .spi_sck_wire    ( spi_sck_soc       ),
     .spi_mosi_wire   ( spi_sd_soc_out[0] ),
     .spi_miso_wire   ( reckon_spi_miso   ),
+    .spi_cs_wire     ( spi_cs_soc[0]     ),
 
     .BRAM_PORTA_addr ( AERAM_addr        ),
     .BRAM_PORTA_clk  ( AERAM_clk         ),
@@ -465,11 +554,29 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .infer_count_o   ( infer_count_12b    ),
     .batch_size_i    ( axi_batch_size[11:0] ),
     .n_samples_i     ( axi_n_samples[11:0]  ),
-    .do_eprop_i      ( axi_do_eprop[2:0]    )
+    .do_eprop_i      ( axi_do_eprop[2:0]    ),
+
+    .cycles_counter_0(cycles_counter[0]),
+    .cycles_counter_1(cycles_counter[1]),
+    .cycles_counter_2(cycles_counter[2]),
+    .cycles_counter_3(cycles_counter[3]),
+    .cycles_counter_4(cycles_counter[4]),
+    .cycles_counter_5(cycles_counter[5]),
+    .cycles_counter_6(cycles_counter[6]),
+    .cycles_counter_7(cycles_counter[7]),
+
+    .counter_config_0(counter_config[0]),
+    .counter_config_1(counter_config[1]),
+    .counter_config_2(counter_config[2]),
+    .counter_config_3(counter_config[3]),
+    .counter_config_4(counter_config[4]),
+    .counter_config_5(counter_config[5]),
+    .counter_config_6(counter_config[6]),
+    .counter_config_7(counter_config[7])
   );
 
-  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_req_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_i;
-  (* dont_touch = "yes" *) (* mark_debug = "true" *) axi_slv_rsp_t [(FPGACfg.AxiExtNumSlv-1):0] axi_slv_o;
+  wire [31:0] cycles_counter [7:0];
+  wire [31:0] counter_config [7:0];
 
   axi_layer #(
     .Cfg               ( FPGACfg ),
@@ -480,41 +587,119 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .axi_ext_slv_rsp_t ( axi_slv_rsp_t )
   ) axi_layer_0 (
     .clk_i             ( soc_clk ),
-    .rst_ni            ( rst_n ),
+    .rst_ni            ( sys_rstn[0] ),
     .slv_req           ( axi_slv_i ),
     .slv_rsp           ( axi_slv_o ),
     .axi_reg_o         ( axi_reg_o ),
     .axi_reg_i         ( axi_reg_i ),
     .axi_gpio_o        ( ),
-    .axi_gpio_i        ( '0 )
+    .axi_gpio_i        ( '0 ),
+
+    .cycles_counter(cycles_counter),
+
+    .counter_config(counter_config)
   );
 
   //////////////////
   //  Reset Sync  //
   //////////////////
 
-  logic rst_n;
+  // logic sys_rst1, sys_rst2, sys_rst3;
+  
+  // synchronization of reset
+  // (* ASYNC_REG = "TRUE" *)
+  // always_ff @(posedge soc_clk) begin
+  //   sys_rst1 <= sys_rst;
+  //   sys_rst2 <= sys_rst1;
+  //   sys_rst3 <= sys_rst2;
+  //   rst_n    <= ~sys_rst2;
+  // end
 
-  rstgen i_rstgen (
-    .clk_i        ( soc_clk     ),
-    .rst_ni       ( ~sys_rst    ),
-    .test_mode_i  ( test_mode_i ),
-    .rst_no       ( rst_n       ),
-    .init_no      ( )
-  );
+  // rstgen i_rstgen (
+  //   .clk_i        ( soc_clk     ),
+  //   .rst_ni       ( ~sys_rst    ),
+  //   .test_mode_i  ( test_mode_i ),
+  //   .rst_no       ( rst_n       ),
+  //   .init_no      ( )
+  // );
 
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [1:0] rst_dbg;
+  logic [1:0] rst_reg [1:0];
+  (* ASYNC_REG = "TRUE" *) reg [1:0] rst_sync1, rst_sync2, sys_rst, sys_rstn;
+
+///////////// rst_reg[0] is for soc_clk domain, rst_reg[1] is for clk15 domain.
+
+  (* ASYNC_REG = "TRUE" *)
+  always_ff @(posedge soc_clk or posedge vio_reset or posedge sys_reset) begin
+      if (vio_reset || sys_reset) begin
+          rst_reg[0] <= 2'b11; // Active high reset
+      end else begin
+          rst_sync1[0] <= rst_reg[0][0];
+          rst_sync2[0] <= rst_sync1[0];
+          sys_rstn[0]  <= ~rst_sync2[0];
+          sys_rst[0]   <= rst_sync2[0];
+          rst_reg[0]   <= 2'b00;
+      end
+  end
+
+  (* ASYNC_REG = "TRUE" *)
+  always_ff @(posedge clk15 or posedge vio_reset or posedge sys_reset) begin
+      if (vio_reset || sys_reset) begin
+          rst_reg[1] <= 2'b11; // Active high reset
+      end else if (clk15) begin
+          rst_sync1[1] <= rst_reg[1][0];
+          rst_sync2[1] <= rst_sync1[1];
+          sys_rstn[1]  <= ~rst_sync2[1];
+          sys_rst[1]   <= rst_sync2[1];
+          rst_reg[1]   <= 2'b00;
+      end
+  end
+
+  assign rst_dbg[0] = sys_rst[0];
+  assign rst_dbg[1] = sys_rst[1];
   logic uart_tx_o, uart_rx_i;
 
-`ifdef USE_RESET
-  assign sys_rst = sys_reset | vio_reset;
-`elsif USE_RESETN
-  assign sys_rst = ~sys_resetn | vio_reset;
-`endif
+  // assign sys_rst = sys_reset | vio_reset;
+  // assign sys_rst = vio_reset;
+
   assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
 
-  assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
-  assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
-  assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
+  // assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
+  // assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
+  // assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
+
+  assign uart_tx_o_gpio   = uart_tx_o;
+  assign uart_rx_i        = uart_rx_i_gpio;
+
+  wire clk_buf_n, clk_buf_p;
+
+  logic [25:0] cnt_led;
+  always_ff @(posedge soc_clk) begin
+    cnt_led <= cnt_led + 1;
+    led_o[1] <= cnt_led == 26'd25000000 ? ~led_o[1] : led_o[1];
+    if (cnt_led == 26'd25000000) begin
+      cnt_led <= 0;
+    end
+  end
+
+// IBUFDS_DIFF_OUT #(
+//   .DIFF_TERM("TRUE"),   // Differential Termination, "TRUE"/"FALSE"
+//   .IBUF_LOW_PWR("FALSE"), // Low power="TRUE", Highest performance="FALSE"
+//   .IOSTANDARD("LVDS_25") // Specify the input I/O standard
+// ) IBUFDS_DIFF_OUT_inst (
+//   .O(clk_buf_p),   // Buffer diff_p output
+//   .OB(clk_buf_n), // Buffer diff_n output
+//   .I(sys_clk_p),   // Diff_p buffer input (connect directly to top-level port)
+//   .IB(sys_clk_n)  // Diff_n buffer input (connect directly to top-level port)
+// );
+
+IBUFDS #(
+  .IBUF_LOW_PWR ("FALSE")
+) i_bufds_sys_clk (
+  .I  ( sys_clk_p ),
+  .IB ( sys_clk_n ),
+  .O  ( sys_clk   )
+);
 
 `ifdef USE_MPSOC
   zcu102_mpsoc_wrapper MPSoC_controller_0 (
@@ -547,20 +732,10 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign AERAM_we   = 4'b0;
   assign AERAM_rst  = 1'b0;
 
-  IBUFDS #(
-    .IBUF_LOW_PWR ("FALSE")
-  ) i_bufds_sys_clk (
-    .I  ( sys_clk_p ),
-    .IB ( sys_clk_n ),
-    .O  ( sys_clk   )
-  );
-
   clkwiz i_clkwiz (
-    .CLK_IN1_D_clk_n(sys_clk_n),
-    .CLK_IN1_D_clk_p(sys_clk_p),
-    .clk_48  ( ),
+    // .clk_in1_n(sys_clk_n),
+    .clk_in1(sys_clk),
     .clk_50   ( soc_clk  ),
-    .clk_20   ( ),
     .clk_15   ( clk15)
   );
   `ifdef USE_VIO
@@ -575,9 +750,9 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 
   `else
     assign vio_reset          = '0;
-    assign vio_boot_mode      = '0;
-    assign vio_boot_mode_sel  = '0;
-    assign vio_uart_out_sel   = '0;
+    assign vio_boot_mode      = 2'h2;
+    assign vio_boot_mode_sel  = 1'b1;
+    assign vio_uart_sel       = '0;
   `endif
 `endif
 

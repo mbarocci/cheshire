@@ -62,6 +62,24 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 
 	input  wire [31:0] gpio_i,
 	output wire [31:0] gpio_o,
+
+	input  wire [31:0] cycles_counter_0,
+	input  wire [31:0] cycles_counter_1,
+	input  wire [31:0] cycles_counter_2,
+	input  wire [31:0] cycles_counter_3,
+	input  wire [31:0] cycles_counter_4,
+	input  wire [31:0] cycles_counter_5,
+	input  wire [31:0] cycles_counter_6,
+	input  wire [31:0] cycles_counter_7,
+
+	output wire [31:0] counter_config_0, 
+	output wire [31:0] counter_config_1, 
+	output wire [31:0] counter_config_2, 
+	output wire [31:0] counter_config_3, 
+	output wire [31:0] counter_config_4, 
+	output wire [31:0] counter_config_5, 
+	output wire [31:0] counter_config_6, 
+	output wire [31:0] counter_config_7, 
 	// User ports ends
 	// Do not modify the ports beyond this line
 
@@ -157,11 +175,15 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 
 	localparam NR = N1+N2;
 	localparam NG = NR +3;
+	localparam NC = 8
+	localparam NCF = NG+2*NC
 
-	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] read_only_regs  [0:N1-1];  // Read-only registers
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] read_only_regs  [ 0:N1-1];  // Read-only registers
 	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] write_only_regs [N1:NR-1]; // Write-only registers
 	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] gpio_regs       [NR:NG-1]; // GPIOs internal reg
-
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] counter_config  [NG:NCF-NC-1];  // counters configurations
+	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] cycles_counter  [NCF-NC:NCF-1];  // configurable counters
+													
 	integer	 byte_index, i;
 
 	// I/O Connections assignments
@@ -293,6 +315,9 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 	wire write_enable;
 	assign write_enable = S_AXI_AWVALID && S_AXI_WVALID && axi_awready && axi_wready;
 
+	reg [31:0] out_reg_r [N1:NR-1]; // Read-only registers
+	reg [31:0] counter_config_reg [NG:NG+NC-1]; // Read-only registers
+
 
 	always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
 		for (i = N1; i < NR; i = i + 1) begin
@@ -300,7 +325,10 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 		end
 		if (S_AXI_ARESETN == 1'b0) begin
 			for (i = N1; i < NR; i = i + 1) begin
-				write_only_regs[i] <= 0;
+				write_only_regs[i]    <= 0;
+			end
+			for (i = NG; i < NG+NC; i = i + 1) begin
+				counter_config_reg[i] <= 0;
 			end
 		end else begin
 			for (i = N1; i < NR; i = i + 1) begin
@@ -316,20 +344,39 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 					write_only_regs[i] <= write_only_regs[i];
 				end
 			end
+			for (i = NG; i < NG+NC; i = i + 1) begin
+				if (write_enable) begin
+					if (axi_awaddr == i) begin
+						for (byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1) begin
+							if (S_AXI_WSTRB[byte_index] == 1) begin
+								counter_config_reg[i][(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+							end
+						end
+					end
+				end else begin
+					counter_config_reg[i] <= counter_config_reg[i];
+				end
+			end
 		end
 	end
 
-	reg [31:0] out_reg_r [N1:NR-1]; // Read-only registers
+	
 
 	always @(posedge S_AXI_ACLK) begin
 		if (S_AXI_ARESETN == 1'b0) begin
 			for (i = N1; i < NR; i = i + 1) begin
 				out_reg_r[i] <= 32'd0; // Default value
 			end
+			for (i = NG; i < NG+NC; i = i + 1) begin
+				counter_config[i] <= 0;
+			end
 		end
 		else begin
 			for (i = N1; i < NR; i = i + 1) begin
 				out_reg_r[i] <= write_only_regs[i];
+			end
+			for (i = NG; i < NG+NC; i = i + 1) begin
+				counter_config[i] <= counter_config_reg[i];
 			end
 		end
 	end
@@ -342,6 +389,15 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 	assign out_reg5 = out_reg_r[N1+5];
 	assign out_reg6 = out_reg_r[N1+6];
 	assign out_reg7 = out_reg_r[N1+7];
+
+	assign counter_config_0 = counter_config[NG+0];
+	assign counter_config_1 = counter_config[NG+1];
+	assign counter_config_2 = counter_config[NG+2];
+	assign counter_config_3 = counter_config[NG+3];
+	assign counter_config_4 = counter_config[NG+4];
+	assign counter_config_5 = counter_config[NG+5];
+	assign counter_config_6 = counter_config[NG+6];
+	assign counter_config_7 = counter_config[NG+7]
 
 		// Implement write response logic generation
 		// The write response and response valid signals are asserted by the slave 
@@ -445,6 +501,25 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 		assign slv_reg_rden = axi_arready & S_AXI_ARVALID & ~axi_rvalid;
 
 	reg [31:0] debugReg_sync      [31:0];
+	reg [31:0] counters_sync      [NCF-NC:NCF-1];
+	
+	always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+		if (S_AXI_ARESETN == 1'b0) begin
+			for (i = NCF-NC; i < NCF; i = i + 1) begin
+				counters_sync[i] <= 32'd0; // Default value
+			end
+		end
+		else begin
+			counters_sync[0] <= cycles_counter_0;
+			counters_sync[1] <= cycles_counter_1;
+			counters_sync[2] <= cycles_counter_2;
+			counters_sync[3] <= cycles_counter_3;
+			counters_sync[4] <= cycles_counter_4;
+			counters_sync[5] <= cycles_counter_5;
+			counters_sync[6] <= cycles_counter_6;
+			counters_sync[7] <= cycles_counter_7;
+		end
+	end
 
 	always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
 		if (S_AXI_ARESETN == 1'b0) begin
@@ -489,8 +564,20 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 	end
 
 	always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
+		if (S_AXI_ARESETN == 1'b0) begin
+			for (i = NCF-NC; i < NCF; i = i + 1) begin
+				cycles_counter[i] <= 32'd0; // Default value
+			end
+		end else begin
+			for (i = NCF-NC; i < NCF; i = i + 1) begin
+				cycles_counter[i] <= counters_sync[i];
+			end
+		end
+	end
+
+	always @(posedge S_AXI_ACLK or negedge S_AXI_ARESETN) begin
 		for (i = 0; i < N1; i = i + 1) begin
-		read_only_regs[i] <= 32'd0; // Default value
+			read_only_regs[i] <= 32'd0; // Default value
 		end
 		if (S_AXI_ARESETN == 1'b0) begin
 			for (i = 0; i < N1; i = i + 1) begin
@@ -516,9 +603,11 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 		// output the read dada 
 		if (slv_reg_rden)
 			begin
-			axi_rdata <= (axi_araddr < N1)                     ? read_only_regs[axi_araddr]  :
-						 (axi_araddr >= N1 && axi_araddr < NR) ? write_only_regs[axi_araddr] : 
-						 (axi_araddr >= NR && axi_araddr < NG) ? gpio_regs[axi_araddr]       :
+			axi_rdata <= (axi_araddr < N1)                     		? read_only_regs[axi_araddr]  :
+						 (axi_araddr >= N1 && axi_araddr < NR) 		? write_only_regs[axi_araddr] :
+						 (axi_araddr >= NR && axi_araddr < NG) 		? gpio_regs[axi_araddr]       :
+						 (axi_araddr >= NG && axi_araddr < NG+NC) 	? counter_config[axi_araddr]  :
+						 (axi_araddr >= NG+NC && axi_araddr < NCF) 	? cycles_counter[axi_araddr]  :
 						 32'hDEADBEEF;    // register read data
 			end   
 		end
