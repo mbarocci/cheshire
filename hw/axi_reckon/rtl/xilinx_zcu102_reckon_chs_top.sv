@@ -554,6 +554,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .infer_count_o   ( infer_count_12b    ),
     .batch_size_i    ( axi_batch_size[11:0] ),
     .n_samples_i     ( axi_n_samples[11:0]  ),
+    .n_epochs_i      ( axi_n_epochs[11:0]   ),
     .do_eprop_i      ( axi_do_eprop[2:0]    ),
 
     .cycles_counter_0(cycles_counter[0]),
@@ -594,9 +595,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
     .axi_reg_i         ( axi_reg_i ),
     .axi_gpio_o        ( ),
     .axi_gpio_i        ( '0 ),
-
     .cycles_counter(cycles_counter),
-
     .counter_config(counter_config)
   );
 
@@ -604,26 +603,7 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   //  Reset Sync  //
   //////////////////
 
-  // logic sys_rst1, sys_rst2, sys_rst3;
-  
-  // synchronization of reset
-  // (* ASYNC_REG = "TRUE" *)
-  // always_ff @(posedge soc_clk) begin
-  //   sys_rst1 <= sys_rst;
-  //   sys_rst2 <= sys_rst1;
-  //   sys_rst3 <= sys_rst2;
-  //   rst_n    <= ~sys_rst2;
-  // end
-
-  // rstgen i_rstgen (
-  //   .clk_i        ( soc_clk     ),
-  //   .rst_ni       ( ~sys_rst    ),
-  //   .test_mode_i  ( test_mode_i ),
-  //   .rst_no       ( rst_n       ),
-  //   .init_no      ( )
-  // );
-
-  (* dont_touch = "yes" *) (* mark_debug = "true" *) logic [1:0] rst_dbg;
+  logic [1:0] rst_dbg;
   logic [1:0] rst_reg [1:0];
   (* ASYNC_REG = "TRUE" *) reg [1:0] rst_sync1, rst_sync2, sys_rst, sys_rstn;
 
@@ -712,16 +692,16 @@ IBUFDS #(
     .BRAM_PORTA_dout(AERAM_dout),
     .CLK_IN1_D_clk_n(sys_clk_n),
     .CLK_IN1_D_clk_p(sys_clk_p),
-    .clk_48   ( ),
-    .clk_50   ( soc_clk  ),
-    .clk_20   ( ),
-    .clk_15   ( clk15),
+  `ifdef USE_VIO
     .probe_out0 ( vio_reset         ),
     .probe_out1 ( vio_boot_mode     ),
     .probe_out2 ( vio_boot_mode_sel ),
     .probe_out3 ( vio_uart_sel  ),
     .probe_in0  ( SPI_EN_CONF   ),
-    .probe_in1  ( debug_axi     )
+    .probe_in1  ( debug_axi     ),
+`endif
+    .clk_50   ( soc_clk  ),
+    .clk_15   ( clk15)
   );
 `else
 

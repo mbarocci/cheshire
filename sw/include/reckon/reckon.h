@@ -1,18 +1,5 @@
 #include "sw/device/lib/dif/dif_spi_host.h"
 
-#include <assert.h>
-#include <stdalign.h>
-#include <stddef.h>
-
-#include "sw/device/lib/base/bitfield.h"
-#include "sw/device/lib/base/memory.h"
-#include "sw/device/lib/base/mmio.h"
-
-#include "params.h"
-#include "util.h"
-
-#include "spi_host_regs.h"
-
 #define INFER_COUNT_REG 0
 #define BATCH_DONE_REG  1
 #define EPOCH_DONE_REG  2
@@ -25,61 +12,58 @@
 #define N_SAMPLES_ADD   2
 #define DO_EPROP_ADD    3
 
-#define NEW_EPOCH_REG   4
-#define NEW_BATCH_REG   5
-#define STOP_REG        6
-#define TEST_REG        7
+#define NEW_EPOCH_gpio  4
+#define NEW_BATCH_gpio  5
+#define STOP_gpio       6
+#define TEST_gpio       7
+
+#define N_WRITE_REGS    8
+
+#define N_GPIO_REGS     3
+
+#define COUNTER_CONF_START_ADD N_READ_REGS + N_WRITE_REGS + N_GPIO_REGS
+#define COUNTER_READ_ADD COUNTER_CONF_START_ADD + 8
+
+#define COUNTER_IDLE_STATE  0
+#define COUNTER_READM_STATE 1
+#define COUNTER_ENDS_STATE  2
+#define COUNTER_TICK_STATE  3
+#define COUNTER_ENDE_STATE  4
+#define COUNTER_LABEL_STATE 5
+#define COUNTER_ENDB_STATE  6
+#define COUNTER_SPIKE_STATE 7
+#define COUNTER_NIDLE_STATE 8
+#define COUNTER_NSAMPLE_STATE 9
+#define COUNTER_NSAMPLE_LENGTH 11
+#define COUNTER_SMPLEP_BIT    20
+#define COUNTER_SMPLBT_BIT    21
+
+#define SPI_BASE_ADDR (mmio_region_t){.base = (void *)&__base_spih}
 
 ///////////////////////////////
 ///////////// SPI /////////////
 ///////////////////////////////
 
-typedef struct reckon_spi_command {
-    uint32_t address;
-    uint32_t data;
-} reckon_spi_command_t;
+uint32_t rck_write_txfifo_byteorder(uint32_t data);
 
-void write_spi_confreg(const dif_spi_host_t *spi_host, reckon_spi_command_t command) {
-    
-    dif_spi_host_fifo_write(spi_host, &command.address, 4);
-    dif_spi_host_fifo_write(spi_host, &command.data, 4);
-    
-    mmio_region_write32(spi_host->base_addr, SPI_HOST_CSID_REG_OFFSET, 0);
+uint32_t rck_gen_spi_cmd(uint32_t N_bytes);
 
-    uint32_t commandreg = 0;
-    commandreg |= (2 << 3) | (7 << 5);
-    mmio_region_write32(spi_host->base_addr, SPI_HOST_COMMAND_REG_OFFSET, commandreg);
-
-    // wait_tx_fifo(spi_host);
-}
+bool wait_for_ready(mmio_region_t base, ptrdiff_t offset, bitfield_bit32_index_t bit_index);
 
 ///////////////////////////////
 ///////////// AXI /////////////
 ///////////////////////////////
 
-void write_axirf(int offset, uint32_t value) {
-    *reg32(&__base_axirf, (offset + (uint32_t)N_READ_REGS)*4) = value;   
-}
+void rck_write_axirf(int offset, uint32_t value);
 
-unsigned int read_axirf(int offset) {
-    return *reg32(&__base_axirf, offset*4);    
-}
+unsigned int rck_read_axirf(int offset);
 
-void toggle_signal(int offset, int value) {
-    write_axirf(offset, value);
-    for (int i=0 ; i<5 ; i++) {
-        asm volatile ("nop");
-    }
-    write_axirf(offset, 1-value);
-}
+void rck_toggle_signal(int offset, int value);
 
-void wait_for_signal(int offset) {
-    int flag = 0;
-    do {
-        flag = read_axirf(offset);
-    } while (flag == 0);
-}
+bool rck_wait_for_signal(int offset);
 
-uint32_t read_accuracy() {
-    return read_axirf((uint32_t)INFER_COUNT_REG);
-}
+uint32_t rck_read_accuracy();
+
+void rck_set_counter_conf(int nr_count, uint32_t value);
+
+uint32_t rck_get_counter_value(int nr_count);

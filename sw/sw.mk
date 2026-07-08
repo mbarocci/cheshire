@@ -49,6 +49,8 @@ CHS_SW_DEPS_SRCS += $(wildcard $(OTPROOT)/sw/device/lib/base/*.c)
 CHS_SW_DEPS_SRCS += $(wildcard $(OTPROOT)/sw/device/lib/dif/*.c)
 CHS_SW_DEPS_SRCS += $(wildcard $(OTPROOT)/sw/device/lib/dif/autogen/*.c)
 
+CHS_SW_DEPS_SRCS += $(CHS_SW_DIR)/include/reckon/reckon.c
+
 #############
 # Libraries #
 #############

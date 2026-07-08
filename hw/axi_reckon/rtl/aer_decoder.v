@@ -49,23 +49,23 @@ module aer_decoder #(
   output reg [31:0] cycles_counter_4,
   output reg [31:0] cycles_counter_5,
   output reg [31:0] cycles_counter_6,
-  output reg [31:0] cycles_counter_7
+  output reg [31:0] cycles_counter_7,
 
-  input wire [31:0] cycles_config_0,
-  input wire [31:0] cycles_config_1,
-  input wire [31:0] cycles_config_2,
-  input wire [31:0] cycles_config_3,
-  input wire [31:0] cycles_config_4,
-  input wire [31:0] cycles_config_5,
-  input wire [31:0] cycles_config_6,
-  input wire [31:0] cycles_config_7
+  input wire [31:0] counter_config_0,
+  input wire [31:0] counter_config_1,
+  input wire [31:0] counter_config_2,
+  input wire [31:0] counter_config_3,
+  input wire [31:0] counter_config_4,
+  input wire [31:0] counter_config_5,
+  input wire [31:0] counter_config_6,
+  input wire [31:0] counter_config_7
 );
 
-  reg [11:0] data_aer_in_reg, tick_aer_in_reg;
-  reg [3:0]  code_aer_in_reg;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [11:0] data_aer_in_reg, tick_aer_in_reg;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [3:0]  code_aer_in_reg;
 
-  reg [2:0] next_state;
-  reg [2:0] curr_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [2:0] next_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [2:0] curr_state;
 
   reg aer_enable;
 
@@ -81,19 +81,19 @@ module aer_decoder #(
   assign data_aer_in = DIN[23:12];
   assign tick_aer_in = DIN[11:0];
 
-  reg [1:0] mem_c_state;
-  reg [1:0] mem_n_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] mem_c_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] mem_n_state;
 
-  reg [1:0] ends_c_state;
-  reg [1:0] ends_n_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] ends_c_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] ends_n_state;
 
-  reg [1:0] label_c_state;
-  reg [1:0] label_n_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] label_c_state;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [1:0] label_n_state;
 
   reg TICK_EN;
-  reg tick_rst, OUT_ACK_rst, RST_sync, READ, ADD_REG_EN, data_ram_valid, TAR_EN, OUT_REQ_sync, AERIN_ACK_sync;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg tick_rst, OUT_ACK_rst, RST_sync, READ, ADD_REG_EN, data_ram_valid, TAR_EN, OUT_REQ_sync, AERIN_ACK_sync;
 
-  reg [11:0] cnt_sample_epoch, cnt_sample_batch, curr_tick;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg [11:0] cnt_sample_epoch, cnt_sample_batch, curr_tick;
 
   wire [11:0] epochs_target;
   
@@ -154,9 +154,9 @@ module aer_decoder #(
   reg        TARGET_VALID_reg;
   reg        INFER_ACC_reg;
   reg [ADDR_WIDTH-1:0] RAM_ADDR_reg;
-  reg        EPOCH_DONE_reg;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg        EPOCH_DONE_reg;
   reg        CS_reg;
-  reg        BATCH_DONE_reg;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)reg        BATCH_DONE_reg;
 
   assign OUT_ACK              = OUT_ACK_reg;
   assign AERIN_REQ            = AERIN_REQ_reg;
@@ -230,7 +230,7 @@ module aer_decoder #(
   /*******************************/
 
   /////INPUT SIGNALS
-  wire   NEW_EPOCH, NEW_BATCH, STOP, TEST;
+  (* dont_touch = "yes" *) (* mark_debug = "true" *)wire   NEW_EPOCH, NEW_BATCH, STOP, TEST;
   assign NEW_EPOCH = NEW_EPOCH_i;
   assign NEW_BATCH = NEW_BATCH_i;
   assign STOP = STOP_i;
@@ -591,9 +591,11 @@ module aer_decoder #(
   /******COUNTERS - AXI RF******/
   /*******************************/
   
+  integer i, idx;
+
   localparam N_COUNTERS  = 8;
   localparam N_STATES    = 8;
-  localparam ACTIVE_BITS = 8;
+  localparam ACTIVE_BITS = 22;
 
   localparam BIT_IDLE   = IDLE;
   localparam BIT_READM  = READM;
@@ -603,57 +605,85 @@ module aer_decoder #(
   localparam BIT_END_S  = END_S;
   localparam BIT_END_B  = END_B;
   localparam BIT_END_E  = END_E;
-  localparam BIT_N_IDLE = 8;
-  // localparam BITX       = 9;
-  // localparam BITX       = 10;
-  // localparam BITX       = 11;
-  // localparam BITX       = 12;
+  localparam BIT_N_IDLE   = 8;
+  localparam BIT_N_SAMPLE = 20; // number of samples to measure
+  localparam BIT_SMPL_EP  = 21; // whether the number of samples to measure refers to the epoch (HAS priority over batch)
+  localparam BIT_SMPL_BT  = 22; // whether the number of samples to measure refers to each batch
+  localparam BIT_TRAIN    = 23; // UNUSED - whether consider only train or only inference epochs
   // localparam BITX       = 13;
   // localparam BITX       = 14;
   // localparam BITX       = 15;
 
-  reg [31:0] cycles_counter [N_COUNTERS-1:0];
-  reg [31:0] counter_config [N_COUNTERS-1:0];
-  // wire cnt_epochs_dbg;
-  // wire ram_addr_o_dbg;
-  
-  // reg [11:0] infer_count_o_reg, cnt_epochs_o_reg;
-  // reg [11:0] samples_batch_o_reg, samples_epoch_o_reg;
-  // reg [ADDR_WIDTH-1:0] ram_addr_o_reg;
-  
-  // assign infer_count_dbg = (ends_c_state == END_S_DONE) && (ends_n_state == END_S_IDLE);
-  // assign cnt_epochs_dbg  = (curr_state == END_E);
-  // assign ram_addr_dbg  = (mem_c_state == MEM_READ2) && (mem_n_state == MEM_IDLE);
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) reg [31:0] cycles_counter [N_COUNTERS-1:0];
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) reg [31:0] counter_config [N_COUNTERS-1:0];
+  (* dont_touch = "yes" *) (* mark_debug = "true" *) reg [N_COUNTERS-1:0] sample_condition, state_condition, reset_condition;
+  wire [N_COUNTERS-1:0] run_condition, train_condition;
 
-  always @(posedge CLK) begin
-    if (RST_sync) begin
-      cycles_counter <= 'b0;
-      counter_config <= 'b0;
-    end else begin
-      for (integer i = 0; i < N_COUNTERS; i = i + 1) begin
-        if (counter_config[i][ACTIVE_BITS-1:0] != {ACTIVE_BITS{1'b0}}) begin
-          if (cycles_config[i][BIT_N_IDLE]) begin
-            cycles_counter[i] <= (curr_state != IDLE) ? cycles_counter[i] + 32'd1 : cycles_counter[i];
-          end else begin
-            if cycles_config[i][BIT_IDLE]   && (curr_state == IDLE)   cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_READM]  && (curr_state == READM)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_TICK]   && (curr_state == TICK)   cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_SPIKE]  && (curr_state == SPIKE)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_LABEL]  && (curr_state == LABEL)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_END_S]  && (curr_state == END_S)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_END_B]  && (curr_state == END_B)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-            if cycles_config[i][BIT_END_E]  && (curr_state == END_E)  cycles_counter[i] <= cycles_counter[i] + 32'd1;
-          end
-        end
+  assign train_condition = {N_COUNTERS{1'b1}};
+  assign run_condition = sample_condition & state_condition & train_condition;
+
+  always @(*) begin
+    reset_condition = {N_COUNTERS{1'b0}};
+    for (i = 0; i < N_COUNTERS; i = i + 1) begin
+      reset_condition[i] =  counter_config[i][BIT_SMPL_EP] ? (curr_state == END_E && next_state != END_E) :
+                            counter_config[i][BIT_SMPL_BT] ? (curr_state == END_B && next_state != END_B) :
+                            (curr_state == END_E && next_state != END_E);
+    end 
+  end
+
+  // always @(*)
+  //   for (integer i = 0; i < N_COUNTERS; i = i + 1)
+  //     train_condition[i] <= counter_config[i][BIT_TRAIN] ? ~TEST : 1'b0;
+
+  // Count cycles when the FSM is in ANY of the states whose bit is set in the
+  // config word (bits [7:0]).  Note: this relies on states being encoded 0-7.
+  always @(*) begin
+    for (i = 0; i < N_COUNTERS; i = i + 1) begin
+      if (counter_config[i][BIT_N_IDLE]) begin
+        state_condition[i] = (curr_state != IDLE);
+      end else begin
+        state_condition[i] = 1'b0;
+        for (idx = BIT_IDLE; idx < BIT_N_IDLE; idx = idx + 1)
+          if (counter_config[i][idx])
+            state_condition[i] = state_condition[i] | (curr_state == idx);
       end
     end
-  end 
+  end
 
-  // // assign infer_count_o = infer_count_o_reg;
-  // assign cnt_epochs_o  = cnt_epochs_o_reg;
-  // assign batch_size_o  = samples_batch_o_reg;
-  // assign n_samples_o   = samples_epoch_o_reg;
-  // assign ram_addr_o    = ram_addr_o_reg;
+  always @(*) begin
+    for (i = 0; i < N_COUNTERS; i = i + 1) begin
+      sample_condition[i] = counter_config[i][BIT_SMPL_EP] ? (cnt_sample_epoch <= counter_config[i][BIT_N_SAMPLE -: 12]) :
+                            counter_config[i][BIT_SMPL_BT] ? (cnt_sample_batch <= counter_config[i][BIT_N_SAMPLE -: 12]) :
+                            1'b1;
+    end
+  end
+
+  always @(posedge CLK) begin
+    for (i = 0; i < N_COUNTERS; i = i + 1) begin
+      if (RST_sync || reset_condition[i]) cycles_counter[i] <= 32'b0;
+      else                                cycles_counter[i] <= run_condition[i] ? cycles_counter[i] + 32'd1 : cycles_counter[i];
+    end
+  end
+
+  always @(*) begin
+    counter_config[0] = counter_config_0;
+    counter_config[1] = counter_config_1;
+    counter_config[2] = counter_config_2;
+    counter_config[3] = counter_config_3;
+    counter_config[4] = counter_config_4;
+    counter_config[5] = counter_config_5;
+    counter_config[6] = counter_config_6;
+    counter_config[7] = counter_config_7;
+
+    cycles_counter_0  = cycles_counter[0];
+    cycles_counter_1  = cycles_counter[1];
+    cycles_counter_2  = cycles_counter[2];
+    cycles_counter_3  = cycles_counter[3];
+    cycles_counter_4  = cycles_counter[4];
+    cycles_counter_5  = cycles_counter[5];
+    cycles_counter_6  = cycles_counter[6];
+    cycles_counter_7  = cycles_counter[7];
+  end
 
 
 endmodule

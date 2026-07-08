@@ -49,7 +49,7 @@ target/sim/vcs/work*
 target/sim/vcs/vc_hdrs.h
 
 # Xilinx generated files
-target/xilinx/build
+target/xilinx/build*
 target/xilinx/out
 target/xilinx/scripts/add_sources.*
 vivado*
@@ -58,10 +58,12 @@ vivado*
 *.mif
 hs_err*
 bitfile/*
-sw/reckon/test/xheep
 
 ./*.log
 BITFILE/
 monitor/
 debug/
 sw/reckon/dataset/
+sw/power/
+BITFILE-ILA/
+BITFILE-NO-ILA/

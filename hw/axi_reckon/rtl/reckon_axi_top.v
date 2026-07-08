@@ -42,16 +42,16 @@ module reckon_axi_top #(
     output wire [31:0] cycles_counter_4,
     output wire [31:0] cycles_counter_5,
     output wire [31:0] cycles_counter_6,
-    output wire [31:0] cycles_counter_7
+    output wire [31:0] cycles_counter_7,
 
-    input wire [31:0] cycles_config_0,
-    input wire [31:0] cycles_config_1,
-    input wire [31:0] cycles_config_2,
-    input wire [31:0] cycles_config_3,
-    input wire [31:0] cycles_config_4,
-    input wire [31:0] cycles_config_5,
-    input wire [31:0] cycles_config_6,
-    input wire [31:0] cycles_config_7
+    input wire [31:0] counter_config_0,
+    input wire [31:0] counter_config_1,
+    input wire [31:0] counter_config_2,
+    input wire [31:0] counter_config_3,
+    input wire [31:0] counter_config_4,
+    input wire [31:0] counter_config_5,
+    input wire [31:0] counter_config_6,
+    input wire [31:0] counter_config_7
 
 );
 
@@ -139,23 +139,23 @@ assign N_EPOCHS   = N_EPOCHS_sync2;
 
 (* ASYNC_REG = "TRUE" *) 
 always @(posedge clk_i) begin
-    cycles_config_sync[0] <= cycles_config_0;
-    cycles_config_sync[1] <= cycles_config_1;
-    cycles_config_sync[2] <= cycles_config_2;
-    cycles_config_sync[3] <= cycles_config_3;
-    cycles_config_sync[4] <= cycles_config_4;
-    cycles_config_sync[5] <= cycles_config_5;
-    cycles_config_sync[6] <= cycles_config_6;
-    cycles_config_sync[7] <= cycles_config_7;
+    counter_config_sync[0] <= counter_config_0;
+    counter_config_sync[1] <= counter_config_1;
+    counter_config_sync[2] <= counter_config_2;
+    counter_config_sync[3] <= counter_config_3;
+    counter_config_sync[4] <= counter_config_4;
+    counter_config_sync[5] <= counter_config_5;
+    counter_config_sync[6] <= counter_config_6;
+    counter_config_sync[7] <= counter_config_7;
 
-    counter_config[0] <= cycles_config_sync[0];
-    counter_config[1] <= cycles_config_sync[1];
-    counter_config[2] <= cycles_config_sync[2];
-    counter_config[3] <= cycles_config_sync[3];
-    counter_config[4] <= cycles_config_sync[4];
-    counter_config[5] <= cycles_config_sync[5];
-    counter_config[6] <= cycles_config_sync[6];
-    counter_config[7] <= cycles_config_sync[7];    
+    counter_config[0] <= counter_config_sync[0];
+    counter_config[1] <= counter_config_sync[1];
+    counter_config[2] <= counter_config_sync[2];
+    counter_config[3] <= counter_config_sync[3];
+    counter_config[4] <= counter_config_sync[4];
+    counter_config[5] <= counter_config_sync[5];
+    counter_config[6] <= counter_config_sync[6];
+    counter_config[7] <= counter_config_sync[7];    
 end
 
 reckon #(
@@ -248,8 +248,8 @@ aer_decoder #(
     .STOP_i(STOP_strb),
     .NEW_BATCH_i(NEW_BATCH_strb),
     .NEW_EPOCH_i(NEW_EPOCH_strb),
-    .BATCH_DONE(BATCH_DONE),
-    .EPOCH_DONE(EPOCH_DONE),
+    .BATCH_DONE(BATCH_DONE_wire),
+    .EPOCH_DONE(EPOCH_DONE_wire),
 
     .infer_count_o(infer_count_o),
 

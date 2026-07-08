@@ -1,5 +1,9 @@
 `include "cheshire/typedef.svh"
 `include "include/axi_macros.svh"
+`include "axi-rt/assign.svh"
+`include "axi-rt/port.svh"
+`include "axi/typedef.svh"
+`define AXI_TYPEDEF_SVH_
 
 module axi_layer import cheshire_pkg::*; #
 (
@@ -13,8 +17,8 @@ module axi_layer import cheshire_pkg::*; #
   input  logic clk_i,
   input  logic rst_ni,
   // use the canonical Cheshire packed AXI types on the module ports
-  input  axi_ext_slv_req_t  [(Cfg.AxiExtNumSlv-1):0] axi_ext_slv_req_s,
-  output axi_ext_slv_rsp_t  [(Cfg.AxiExtNumSlv-1):0] axi_ext_slv_rsp_s,
+  input  axi_ext_slv_req_t  [(Cfg.AxiExtNumSlv-1):0] slv_req,
+  output axi_ext_slv_rsp_t  [(Cfg.AxiExtNumSlv-1):0] slv_rsp,
 
   output logic [31:0] axi_reg_o [AxiRegsNout-1:0],
   input  logic [31:0] axi_reg_i [AxiRegsNin-1:0],
@@ -33,59 +37,53 @@ module axi_layer import cheshire_pkg::*; #
   logic axi_aclk;
   logic axi_aresetn;
 
-  // flattened AXI-Lite signals (created below by AXI_S_PORT)
-  // full AXI signals used internally
-  logic [Cfg.AddrWidth+2-1 : 0] 		axi_awaddr;
-  logic [2 : 0] 						axi_awprot;
-  logic  								axi_awvalid;
-  logic  								axi_awready;
-  logic [Cfg.AxiDataWidth-1 : 0] 		axi_wdata;
-  logic [(Cfg.AxiDataWidth/8)-1 : 0] 	axi_wstrb;
-  logic  								axi_wvalid;
-  logic  								axi_wready;
-  logic [1 : 0] 						axi_bresp;
-  logic  								axi_bvalid;
-  logic  								axi_bready;
-  logic [Cfg.AddrWidth+2-1 : 0] 		axi_araddr;
-  logic [2 : 0] 						axi_arprot;
-  logic  								axi_arvalid;
-  logic  								axi_arready;
-  logic [Cfg.AxiDataWidth-1 : 0] 		axi_rdata;
-  logic [1 : 0] 						axi_rresp;
-  logic  								axi_rvalid;
-  logic  								axi_rready;
+  logic [Cfg.AddrWidth+2-1 : 0]       s_axi_lite_rf_awaddr_i;
+  logic [2 : 0] 						          s_axi_lite_rf_awprot_i;
+  logic  								              s_axi_lite_rf_awvalid_i;
+  logic  								              s_axi_lite_rf_awready_o;
+  logic [Cfg.AxiDataWidth-1 : 0]      s_axi_lite_rf_wdata_i;
+  logic [(Cfg.AxiDataWidth/8)-1 : 0] 	s_axi_lite_rf_wstrb_i;
+  logic  								              s_axi_lite_rf_wvalid_i;
+  logic  								              s_axi_lite_rf_wready_o;
+  logic [1 : 0] 						          s_axi_lite_rf_bresp_o;
+  logic  								              s_axi_lite_rf_bvalid_o;
+  logic  								              s_axi_lite_rf_bready_i;
+  logic [Cfg.AddrWidth-1 : 0]     		s_axi_lite_rf_araddr_i;
+  logic [2 : 0] 						          s_axi_lite_rf_arprot_i;
+  logic  								              s_axi_lite_rf_arvalid_i;
+  logic  								              s_axi_lite_rf_arready_o;
+  logic [Cfg.AxiDataWidth-1 : 0] 		  s_axi_lite_rf_rdata_o;
+  logic [1 : 0] 						          s_axi_lite_rf_rresp_o;
+  logic  								              s_axi_lite_rf_rvalid_o;
+  logic  								              s_axi_lite_rf_rready_i;
 
-  // Create Cheshire AXI typedefs (produces addr_t, axi_data_t, axi_strb_t, axi_user_t, axi_slv_req_t, etc.)
   `CHESHIRE_TYPEDEF_ALL(, Cfg)
+  `AXI_LITE_TYPEDEF_ALL(axirf_lite, addr_t, axi_data_t, axi_strb_t)
 
-  // Create AXI-Lite typedefs (lite_req_t / lite_resp_t)
-  // typedef logic [Cfg.AddrWidth-1:0]       lite_addr_t;
-  // typedef logic [Cfg.AxiDataWidth-1:0]    lite_data_t;
-  // typedef logic [Cfg.AxiDataWidth/8-1:0]  lite_strb_t;
-  `AXI_LITE_TYPEDEF_ALL(lite, addr_t, axi_data_t, axi_strb_t)
+  axirf_lite_req_t axi_slv_rf_i;
+  axirf_lite_resp_t axi_slv_rf_o;
 
-  // convenient aliases for third-party converter
-  typedef axi_slv_req_t   full_req_t;
-  typedef axi_slv_rsp_t   full_resp_t;
+  // `AXI_LITE_S(axi_lite_rf, addr_t, axi_data_t, axi_strb_t)
+  `AXI_LITE_ASSIGN_SLAVE_TO_FLAT_ARRAY (rf, 1, axi_slv_rf_i, axi_slv_rf_o)
 
-  // packed bus variables used with converter
-  full_req_t  full_req;
-  full_resp_t full_resp;
-  lite_req_t  lite_req;
-  lite_resp_t lite_resp;
+// `define AXI_LITE_ASSIGN_SLAVE_TO_FLAT_ARRAY(pat, __width, req, rsp) \
+//   assign req.aw_valid  = s_axi_lite_``pat``_awvalid_i  ;            \
 
-  // RF-side packed slave port signals (adapter between external RF and internal packed view)
-  axi_slv_req_t  axi_slv_rf_i;
-  axi_slv_rsp_t  axi_slv_rf_o;
+  axi_ext_slv_req_t full_axi_rf_req;
+  axi_ext_slv_rsp_t full_axi_rf_rsp;
 
-  localparam int unsigned RF_REGION_BYTES = 1024;
-  localparam int unsigned RF_ADDR_SHIFT   = $clog2(Cfg.AxiDataWidth/8); // byte->beat index
-  localparam int unsigned RF_ADDR_WIDTH   = $clog2(RF_REGION_BYTES) - RF_ADDR_SHIFT;
-  typedef logic [RF_ADDR_WIDTH-1:0] rf_addr_t;
-
-  // Generate flattened AXI-Lite ports/signals with sizes from CHESHIRE typedefs.
-  // last five args are user types — pass axi_user_t for all channels
-`AXI_LITE_S(lite_rf, rf_addr_t, axi_data_t, axi_strb_t)
+  // --- External slave array -> single RF instance adapter (index 0 chosen here) ---
+  // If multiple external slaves are present adapt this accordingly.
+  generate
+    if (Cfg.AxiExtNumSlv > 0) begin
+      // connect first external slave to the RF adapter
+      assign full_axi_rf_req = slv_req[0];
+      assign slv_rsp[0] = full_axi_rf_rsp;
+    end else begin
+      // tie off if none present
+      assign full_axi_rf_req = '0;
+    end
+  endgenerate
 
   // small register arrays used by the AXI4 RF slave IP
   logic [31:0] in_reg  [0:31];
@@ -108,139 +106,79 @@ module axi_layer import cheshire_pkg::*; #
   assign axi_aclk    = clk_i;
   assign axi_aresetn = rst_ni;
 
-  // --- External slave array -> single RF instance adapter (index 0 chosen here) ---
-  // If multiple external slaves are present adapt this accordingly.
-  generate
-    if (Cfg.AxiExtNumSlv > 0) begin
-      // connect first external slave to the RF adapter
-      assign axi_slv_rf_i = axi_ext_slv_req_s[0];
-      assign axi_ext_slv_rsp_s[0] = axi_slv_rf_o;
-    end else begin
-      // tie off if none present
-      assign axi_slv_rf_i = '0;
-    end
-  endgenerate
-
-  // --- map flattened RF-side signals to internal full-AXI signals (packed view) ---
-  // pack/unpack between flattened lite signals and lite_req / lite_resp
-
-wire [RF_ADDR_WIDTH-1:0] rf_awaddr = lite_req.aw.addr[RF_ADDR_SHIFT +: RF_ADDR_WIDTH];
-wire [RF_ADDR_WIDTH-1:0] rf_araddr = lite_req.ar.addr[RF_ADDR_SHIFT +: RF_ADDR_WIDTH];
-
-// ---------------------------
-// Write Address Channel
-// ---------------------------
-
-assign s_axi_lite_rf_awaddr  = rf_awaddr;
-assign s_axi_lite_rf_awprot  = lite_req.aw.prot;
-assign s_axi_lite_rf_awvalid = lite_req.aw_valid;
-assign lite_resp.aw_ready    = s_axi_lite_rf_awready;
-
-// ---------------------------
-// Write Data Channel
-// ---------------------------
-
-assign s_axi_lite_rf_wdata   = lite_req.w.data;
-assign s_axi_lite_rf_wstrb   = lite_req.w.strb;
-assign s_axi_lite_rf_wvalid  = lite_req.w_valid;
-assign lite_resp.w_ready     = s_axi_lite_rf_wready;
-
-// ---------------------------
-// Write Response Channel
-// ---------------------------
-
-assign s_axi_lite_rf_bready  = lite_req.b_ready;
-
-assign lite_resp.b.resp      = s_axi_lite_rf_bresp;
-assign lite_resp.b_valid     = s_axi_lite_rf_bvalid;
-
-// ---------------------------
-// Read Address Channel
-// ---------------------------
-
-assign s_axi_lite_rf_araddr  = rf_araddr;
-assign s_axi_lite_rf_arprot  = lite_req.ar.prot;
-assign s_axi_lite_rf_arvalid = lite_req.ar_valid;
-assign lite_resp.ar_ready    = s_axi_lite_rf_arready;
-
-// ---------------------------
-// Read Data Channel
-// ---------------------------
-
-assign s_axi_lite_rf_rready  = lite_req.r_ready;
-
-assign lite_resp.r.data      = s_axi_lite_rf_rdata;
-assign lite_resp.r.resp      = s_axi_lite_rf_rresp;
-assign lite_resp.r_valid     = s_axi_lite_rf_rvalid;
-
-  // Map RF packed slave <-> converter packed full AXI types
-  // full_req is driven from the RF packed view; full_resp drives RF packed response
-  assign full_req  = axi_slv_rf_i;
-  assign axi_slv_rf_o = full_resp;
-
   localparam axi_in_t AxiIn = gen_axi_in(Cfg);
   localparam int unsigned AxiSlvIdWidth = Cfg.AxiMstIdWidth + $clog2(AxiIn.num_in);
 
-  // Instantiate converter (full AXI -> AXI-Lite)
   axi_to_axi_lite #(
     .AxiAddrWidth    ( Cfg.AddrWidth     ),
     .AxiDataWidth    ( Cfg.AxiDataWidth  ),
-    .AxiIdWidth      (  AxiSlvIdWidth    ),
+    .AxiIdWidth      (   AxiSlvIdWidth   ),
     .AxiUserWidth    ( Cfg.AxiUserWidth  ),
     .AxiMaxWriteTxns ( 4 ),
     .AxiMaxReadTxns  ( 4 ),
     .FallThrough     ( 1 ),
     .FullBW          ( 0 ),
-    .full_req_t      ( full_req_t   ),
-    .full_resp_t     ( full_resp_t  ),
-    .lite_req_t      ( lite_req_t   ),
-    .lite_resp_t     ( lite_resp_t  )
-  ) i_axi_to_axi_lite (
+    .full_req_t      ( axi_ext_slv_req_t ),
+    .full_resp_t     ( axi_ext_slv_rsp_t ),
+    .lite_req_t      ( axirf_lite_req_t  ),
+    .lite_resp_t     ( axirf_lite_resp_t )
+  ) i_axi_to_axi_lite_rf (
     .clk_i      ( clk_i      ),
     .rst_ni     ( rst_ni     ),
     .test_i     ( 1'b0       ),
     // slave port full AXI4+ATOP (packed)
-    .slv_req_i  ( full_req   ),
-    .slv_resp_o ( full_resp  ),
+    .slv_req_i  ( full_axi_rf_req   ),
+    .slv_resp_o ( full_axi_rf_rsp  ),
     // master port AXI4-Lite (packed)
-    .mst_req_o  ( lite_req   ),
-    .mst_resp_i ( lite_resp  )
+    .mst_req_o  ( axi_slv_rf_i  ),
+    .mst_resp_i ( axi_slv_rf_o  )
   );
+
+  logic [31:0] axilite32_rdata, axilite32_wdata, axilite32_raddr, axilite32_waddr, tmp_axilite32_raddr, tmp_axilite32_waddr;
+
+  assign tmp_axilite32_raddr = axi_slv_rf_i.ar.addr - Cfg.AxiExtRegionStart[0];
+  assign tmp_axilite32_waddr = axi_slv_rf_i.aw.addr - Cfg.AxiExtRegionStart[0];
+
+  // assign s_axi_lite_rf_rdata_o = {32'b0, axilite32_rdata};
+  assign axi_slv_rf_o.r.data = {32'b0, axilite32_rdata};
+  assign axilite32_wdata = axi_slv_rf_i.w.data[31:0];
+  assign axilite32_waddr = {3'b0, tmp_axilite32_waddr[31:3]};
+  assign axilite32_raddr = {3'b0, tmp_axilite32_raddr[31:3]};
 
   // Instantiate the AXI4 RF slave IP (AXI-Lite frontend)
   AXI4_RF_slave_lite_v1_0_S00_AXI # (
     .N1(N1),
     .N2(N2),
-    .C_S_AXI_DATA_WIDTH(Cfg.AxiDataWidth),
-    .C_S_AXI_ADDR_WIDTH(RF_ADDR_WIDTH)
+    .C_S_AXI_DATA_WIDTH(32),
+    .C_S_AXI_ADDR_WIDTH(Cfg.AddrWidth)
   ) AXI4_RF_slave_lite_v1_0_S00_AXI_inst (
     .S_AXI_ACLK   (axi_aclk),
     .S_AXI_ARESETN(axi_aresetn),
 
-    // AXI-Lite ports generated by `AXI_S_PORT(lite_rf, ...)`
-    .S_AXI_AWADDR (s_axi_lite_rf_awaddr),
-    .S_AXI_AWPROT (s_axi_lite_rf_awprot),
-    .S_AXI_AWVALID(s_axi_lite_rf_awvalid),
-    .S_AXI_AWREADY(s_axi_lite_rf_awready),
+    .S_AXI_AWADDR (axilite32_waddr),
+    .S_AXI_AWPROT (axi_slv_rf_i.aw.prot),
+    .S_AXI_AWVALID(axi_slv_rf_i.aw_valid),
+    .S_AXI_AWREADY(axi_slv_rf_o.aw_ready),
 
-    .S_AXI_WDATA  (s_axi_lite_rf_wdata),
-    .S_AXI_WSTRB  (s_axi_lite_rf_wstrb),
-    .S_AXI_WVALID (s_axi_lite_rf_wvalid),
-    .S_AXI_WREADY (s_axi_lite_rf_wready),
+    .S_AXI_WDATA  (axilite32_wdata),
+    .S_AXI_WSTRB  (axi_slv_rf_i.w.strb),
+    .S_AXI_WVALID (axi_slv_rf_i.w_valid),
+    .S_AXI_WREADY (axi_slv_rf_o.w_ready),
 
-    .S_AXI_BRESP  (s_axi_lite_rf_bresp),
-    .S_AXI_BVALID (s_axi_lite_rf_bvalid),
-    .S_AXI_BREADY (s_axi_lite_rf_bready),
+    .S_AXI_BRESP  (axi_slv_rf_o.b.resp),
+    .S_AXI_BVALID (axi_slv_rf_o.b_valid),
+    .S_AXI_BREADY (axi_slv_rf_i.b_ready),
 
-    .S_AXI_ARADDR (s_axi_lite_rf_araddr),
-    .S_AXI_ARPROT (s_axi_lite_rf_arprot),
-    .S_AXI_ARVALID(s_axi_lite_rf_arvalid),
-    .S_AXI_ARREADY(s_axi_lite_rf_arready),
+    .S_AXI_ARADDR (axilite32_raddr),
+    .S_AXI_ARPROT (axi_slv_rf_i.ar.prot),
+    .S_AXI_ARVALID(axi_slv_rf_i.ar_valid),
+    .S_AXI_ARREADY(axi_slv_rf_o.ar_ready),
 
-    .S_AXI_RDATA  (s_axi_lite_rf_rdata),
-    .S_AXI_RRESP  (s_axi_lite_rf_rresp),
-    .S_AXI_RVALID (s_axi_lite_rf_rvalid),
-    .S_AXI_RREADY (s_axi_lite_rf_rready),
+    .S_AXI_RDATA  (axilite32_rdata),
+    .S_AXI_RRESP  (axi_slv_rf_o.r.resp),
+    .S_AXI_RVALID (axi_slv_rf_o.r_valid),
+    .S_AXI_RREADY (axi_slv_rf_i.r_ready),
+
 
     // register / GPIO ports
     .in_reg0(in_reg[0]),   .in_reg1(in_reg[1]),   .in_reg2(in_reg[2]),   .in_reg3(in_reg[3]),
@@ -253,9 +191,9 @@ assign lite_resp.r_valid     = s_axi_lite_rf_rvalid;
     .in_reg28(in_reg[28]), .in_reg29(in_reg[29]), .in_reg30(in_reg[30]), .in_reg31(in_reg[31]),
 
     .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
-    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
-    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
-    .cycles_counter_0(cycles_counter[0]), .cycles_counter_1(cycles_counter[1]),
+    .cycles_counter_2(cycles_counter[2]), .cycles_counter_3(cycles_counter[3]),
+    .cycles_counter_4(cycles_counter[4]), .cycles_counter_5(cycles_counter[5]),
+    .cycles_counter_6(cycles_counter[6]), .cycles_counter_7(cycles_counter[7]),
 
     .out_reg0(out_reg[0]), .out_reg1(out_reg[1]), .out_reg2(out_reg[2]), .out_reg3(out_reg[3]),
     .out_reg4(out_reg[4]), .out_reg5(out_reg[5]), .out_reg6(out_reg[6]), .out_reg7(out_reg[7]),

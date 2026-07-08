@@ -124,7 +124,7 @@ proc insert_ilas {clk_net_name} {
     create_debug_core i_ila ila
     set_property -dict [list \
         ALL_PROBE_SAME_MU {true} ALL_PROBE_SAME_MU_CNT {4} C_ADV_TRIGGER {true} \
-        C_DATA_DEPTH {16384} C_EN_STRG_QUAL {true} C_INPUT_PIPE_STAGES {0} \
+        C_DATA_DEPTH {8192} C_EN_STRG_QUAL {true} C_INPUT_PIPE_STAGES {0} \
         C_TRIGIN_EN {false} C_TRIGOUT_EN {false} \
         ] [get_debug_cores i_ila]
     # Connect SoC clock

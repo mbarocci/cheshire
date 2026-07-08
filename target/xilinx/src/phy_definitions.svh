@@ -48,10 +48,10 @@
   `define USE_RESET
   `define USE_JTAG
   // `define USE_DDR4
-  `define USE_VIO
-  // `define USE_MPSOC
+  // `define USE_VIO
+  `define USE_MPSOC
   `define USE_NUM_LED 2
-  `endif
+`endif
 
 `define TRAIN_DS "aertrain_ds.mem"
 `define VAL_DS "aerval_ds.mem"

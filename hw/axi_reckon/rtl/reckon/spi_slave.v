@@ -178,10 +178,11 @@ module spi_slave  #(
     //    REG & WIRES :
     //----------------------------------------------------------------------------------
     
-    reg  [16:0] spi_cnt;
+    (* dont_touch = "yes" *) (* mark_debug = "true" *) reg  [16:0] spi_cnt;
     
-    reg  [31:0] spi_shift_reg_out, spi_shift_reg_in;
-    reg  [31:0] spi_addr;
+    reg  [31:0] spi_shift_reg_out;
+    (* dont_touch = "yes" *) (* mark_debug = "true" *) reg  [31:0] spi_shift_reg_in;
+    (* dont_touch = "yes" *) (* mark_debug = "true" *) reg  [31:0] spi_addr;
     wire [11:0] num_write;
     
     genvar      i;

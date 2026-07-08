@@ -15,3 +15,4 @@ dependencies:
     - mkdocs-material
     - markdown-grid-tables
     - pyserial
+    - numpy

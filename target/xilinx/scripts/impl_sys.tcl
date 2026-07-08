@@ -7,15 +7,15 @@
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 # Paul Scheffler <cykoenig@iis.ee.ethz.ch>
 
-# Iniftialize implementation
+# Iniftfialize implementation
 set xilinx_root [file dirname [file dirname [file normalize [info script]]]]
 source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
-# dsdggfAddtional args provide IPs
+# dfsdggfAddtional args provide IPs
 read_ip [exec realpath {*}[lrange $argv 2 end]] 
 
-# Lsoad constraintrs
+# Lfssoad constraintrs
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${proj}.xdc
 import_files -fileset constrs_1 -norecurse ${xilinx_root}/constraints/${board}.xdc
 
@@ -29,12 +29,12 @@ set_property top ${proj}_top_xilinx [current_fileset]
 update_compile_order -fileset sources_1
 
 # Add block design
-if {[file exists "${xilinx_root}/scripts/chs-bd-${board}.tcl"]} {
-    source ${xilinx_root}/scripts/chs-bd-${board}.tcl
+if {[file exists "${xilinx_root}/scripts/chs-bd-${board}-vio.tcl"]} {
+    source ${xilinx_root}/scripts/chs-bd-${board}-vio.tcl
     set_property synth_checkpoint_mode None [get_files  ${project_root}/${proj}.srcs/sources_1/bd/${board}_mpsoc/${board}_mpsoc.bd]
     generate_target all [get_files ${project_root}/${proj}.srcs/sources_1/bd/${board}_mpsoc/${board}_mpsoc.bd]
 } else {
-    puts "Warning: ${xilinx_root}/scripts/chs-bd-${board}.tcl not found -- skipping block design for ${board}."
+    puts "Warning: ${xilinx_root}/scripts/chs-bd-${board}-vio.tcl not found -- skipping block design for ${board}."
 }
 
 # Set synthesis propertiesl

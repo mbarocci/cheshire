@@ -175,8 +175,8 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 
 	localparam NR = N1+N2;
 	localparam NG = NR +3;
-	localparam NC = 8
-	localparam NCF = NG+2*NC
+	localparam NC = 8;
+	localparam NCF = NG+2*NC;
 
 	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] read_only_regs  [ 0:N1-1];  // Read-only registers
 	(* dont_touch = "yes" *) (* mark_debug = "true" *) reg [C_S_AXI_DATA_WIDTH-1:0] write_only_regs [N1:NR-1]; // Write-only registers
@@ -397,7 +397,7 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 	assign counter_config_4 = counter_config[NG+4];
 	assign counter_config_5 = counter_config[NG+5];
 	assign counter_config_6 = counter_config[NG+6];
-	assign counter_config_7 = counter_config[NG+7]
+	assign counter_config_7 = counter_config[NG+7];
 
 		// Implement write response logic generation
 		// The write response and response valid signals are asserted by the slave 
