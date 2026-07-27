@@ -20,7 +20,7 @@
 #define OFF false
 
 #define N_EPOCHS 20
-#define N_SAMPLES 200
+#define N_SAMPLES 150
 
 #define TRAIN 7
 #define VAL   0
@@ -238,20 +238,26 @@ int main() {
     // printf("Starting the experiment %08X\n\r", rck_read_axirf(TEST_REG));
 
     printf("Starting the experiment.......\n\r");
-    rck_set_counter_conf(0, 0);
 
+    uint32_t count0_config = 0;
+    count0_config |= (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7);
+
+    rck_set_counter_conf(0, count0_config);
+    uint32_t counter0_value[N_EPOCHS*2];
     for (int i = 0; i < N_EPOCHS; i++) {
         rck_write_axirf(DO_EPROP_ADD,   TRAIN);
         rck_write_axirf(TEST_gpio,       0);
-
+        
         rck_toggle_signal(NEW_EPOCH_gpio, 1);
 
         rck_wait_for_signal(EPOCH_DONE_REG);
 
-        inference_train[0] = rck_read_accuracy();
+        //inference_train[0] = rck_read_accuracy();
 
-        printf("Train accuracy at epoch %d -------- %u/%d\n\r", i+1, inference_train[0], N_SAMPLES);
-        
+        //printf("Train accuracy at epoch %d -------- %u/%d\n\r", i+1, inference_train[0], N_SAMPLES);
+        counter0_value[2*i] = rck_get_counter_value(0);
+        // printf("TRAIN cycles ---- %u\n\r", counter0_value);
+
         rck_toggle_signal(STOP_gpio, 1);
 
         rck_write_axirf(DO_EPROP_ADD,   VAL);
@@ -261,12 +267,23 @@ int main() {
 
         rck_wait_for_signal(EPOCH_DONE_REG);
 
-        inference_val[i] = rck_read_accuracy();
-        printf("Validation accuracy at epoch %d --- %u/%d\n\r", i+1, inference_val[i], N_SAMPLES);
+        //inference_val[i] = rck_read_accuracy();
+        //printf("Validation accuracy at epoch %d --- %u/%d\n\r", i+1, inference_val[i], N_SAMPLES);
+        counter0_value[2*i+1] = rck_get_counter_value(0);
+        // printf("VAL cycles ---- %u\n\r", counter0_value);
         printf("-------------------------------------------\n\r");
         rck_toggle_signal(STOP_gpio, 1);
-    }
+    } 
 
-    printf("ENDEXPERIMENT\n\r");
+    uint32_t avg_train=0, avg_val=0;
+    for (int i = 0; i < N_EPOCHS; i++) {
+        avg_train += counter0_value[2*i];
+        avg_val   += counter0_value[2*i+1];
+    }
+    avg_train = avg_train / N_EPOCHS;
+    avg_val   = avg_val / N_EPOCHS;
+    printf("Average nr. of cycles during training   = %u\n\r", avg_train);
+    printf("Average nr. of cycles during validation = %u\n\r", avg_val);
+    // printf("ENDEXPERIMENT\n\r");
     return 0;
 }

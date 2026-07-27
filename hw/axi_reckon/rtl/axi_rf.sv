@@ -510,14 +510,14 @@ module AXI4_RF_slave_lite_v1_0_S00_AXI #
 			end
 		end
 		else begin
-			counters_sync[0] <= cycles_counter_0;
-			counters_sync[1] <= cycles_counter_1;
-			counters_sync[2] <= cycles_counter_2;
-			counters_sync[3] <= cycles_counter_3;
-			counters_sync[4] <= cycles_counter_4;
-			counters_sync[5] <= cycles_counter_5;
-			counters_sync[6] <= cycles_counter_6;
-			counters_sync[7] <= cycles_counter_7;
+			counters_sync[NCF-NC+0] <= cycles_counter_0;
+			counters_sync[NCF-NC+1] <= cycles_counter_1;
+			counters_sync[NCF-NC+2] <= cycles_counter_2;
+			counters_sync[NCF-NC+3] <= cycles_counter_3;
+			counters_sync[NCF-NC+4] <= cycles_counter_4;
+			counters_sync[NCF-NC+5] <= cycles_counter_5;
+			counters_sync[NCF-NC+6] <= cycles_counter_6;
+			counters_sync[NCF-NC+7] <= cycles_counter_7;
 		end
 	end
 

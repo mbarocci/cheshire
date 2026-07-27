@@ -12,7 +12,7 @@ set xilinx_root [file dirname [file dirname [file normalize [info script]]]]
 source ${xilinx_root}/scripts/common.tcl
 init_impl $xilinx_root $argc $argv
 
-# dfsdggfAddtional args provide IPs
+# dfsdggfAddtio8nal args provide IPs
 read_ip [exec realpath {*}[lrange $argv 2 end]] 
 
 # Lfssoad constraintrs

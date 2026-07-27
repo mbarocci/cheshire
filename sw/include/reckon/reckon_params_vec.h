@@ -1,7 +1,7 @@
 #define NPARAM_RECKON 63
 
 #define N_INP_NEUR 6
-#define N_REC_NEUR 8
+#define N_REC_NEUR 32
 #define N_OUT_NEUR 2
 
 #define KAPPA      124
