@@ -1,13 +1,8 @@
-#!/usr/bin/env python3
-# Copyright 2022 ETH Zurich and University of Bologna.
-# Solderpad Hardware License, Version 0.51, see LICENSE for details.
-# SPDX-License-Identifier: SHL-0.51
+# Copyright 2026 Michelangelo Barocci, Politecnico di Torino.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
 #
-# Generate a C header file containing a 2D int8_t weight matrix
-# with random values for the RECKON accelerator.
-#
-# Usage:
-#   python3 weights_gen.py --type winp --pre 6 --post 38 [--output winp.h] [--seed 42]
+# Michelangelo Barocci <michelangelo.barocci@polito.it>
 
 import argparse
 import numpy as np

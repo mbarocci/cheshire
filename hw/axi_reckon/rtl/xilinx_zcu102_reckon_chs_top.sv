@@ -7,6 +7,7 @@
 // Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 // Yann Picod <ypicod@ethz.ch>
 // Paul Scheffler <paulsc@iis.ee.ethz.ch>
+// Modified 2026 by Michelangelo Barocci, Politecnico di Torino <michelangelo.barocci@polito.it>
 
 `include "cheshire/typedef.svh"
 `include "phy_definitions.svh"
@@ -136,15 +137,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   //  System Inputs  //
   /////////////////////
 
-//   // Select SoC reset
-// `ifdef USE_RESET
-//   logic sys_resetn;
-//   assign sys_resetn = ~sys_reset;
-// `elsif USE_RESETN
-//   logic sys_reset;
-//   assign sys_reset  = ~sys_resetn;
-// `endif
-
   // Tie off inputs of no switches
 `ifndef USE_SWITCHES
   logic       test_mode_i;
@@ -185,92 +177,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
   assign spi_sd_soc_in[1] = reckon_spi_miso;
   assign spi_sd_soc_in[2] = 1'b0;
   assign spi_sd_soc_in[3] = 1'b0;
-
-// `ifdef USE_STARTUPE3
-//   STARTUPE3 #(
-//     .PROG_USR("FALSE"),
-//     .SIM_CCLK_FREQ(0.0)
-//   ) i_startupe3 (
-//     .CFGCLK     ( ),
-//     .CFGMCLK    ( ),
-//     .DI         ( qspi_dqi ),
-//     .EOS        ( ),
-//     .PREQ       ( ),
-//     .DO         ( qspi_dqo ),
-//     .DTS        ( qspi_dqo_ts ),
-//     .FCSBO      ( qspi_cs_b[1] ),
-//     .FCSBTS     ( qspi_cs_b_ts[1] ),
-//     .GSR        ( 1'b0 ),
-//     .GTS        ( 1'b0 ),
-//     .KEYCLEARB  ( 1'b1 ),
-//     .PACK       ( 1'b0 ),
-//     .USRCCLKO   ( qspi_clk ),
-//     .USRCCLKTS  ( qspi_clk_ts ),
-//     .USRDONEO   ( 1'b1 ),
-//     .USRDONETS  ( 1'b1 )
-//   );
-// `else
-// `ifdef USE_STARTUPE2
-//   (*keep="TRUE"*)
-//   STARTUPE2 #(
-//     .PROG_USR("FALSE"),
-//     .SIM_CCLK_FREQ(0.0)
-//     ) i_startupe2 (
-//     .CFGCLK     ( ),
-//     .CFGMCLK    ( ),
-//     .EOS        ( ),
-//     .PREQ       ( ),
-//     .CLK        ( 1'b0 ),
-//     .GSR        ( 1'b0 ),
-//     .GTS        ( 1'b0 ),
-//     .KEYCLEARB  ( 1'b0 ),
-//     .PACK       ( 1'b0 ),
-//     .USRCCLKO   ( spi_sck_soc ),
-//     .USRCCLKTS  ( 1'b0 ),
-//     .USRDONEO   ( 1'b0 ),
-//     .USRDONETS  ( 1'b0 )
-//   );
-// `else
-  // IOBUF #(
-  //   .DRIVE        ( 12        ),
-  //   .IBUF_LOW_PWR ( "FALSE"   ),
-  //   .IOSTANDARD   ( "DEFAULT" ),
-  //   .SLEW         ( "FAST"    )
-  // ) i_spih_sck_iobuf (
-  //   .O  (  ),
-  //   .IO ( spih_sck_o  ),
-  //   .I  ( spi_sck_soc ),
-  //   .T  ( ~spi_sck_en )
-  // );
-// `endif
-
-//   IOBUF #(
-//     .DRIVE        ( 12        ),
-//     .IBUF_LOW_PWR ( "FALSE"   ),
-//     .IOSTANDARD   ( "DEFAULT" ),
-//     .SLEW         ( "FAST"    )
-//   ) i_spih_csb_iobuf (
-//     .O  (  ),
-//     .IO ( spih_csb_o ),
-//     .I  ( spi_cs_soc [1] ),
-//     .T  ( ~spi_cs_en [1] )
-//   );
-
-//   for (genvar i = 0; i < 4; ++i) begin : gen_qspi_iobufs
-//     IOBUF #(
-//       .DRIVE        ( 12        ),
-//       .IBUF_LOW_PWR ( "FALSE"   ),
-//       .IOSTANDARD   ( "DEFAULT" ),
-//       .SLEW         ( "FAST"    )
-//     ) i_spih_sd_iobuf (
-//       .O  ( spi_sd_spih_in [i] ),
-//       .IO ( spih_sd_io     [i] ),
-//       .I  ( spi_sd_soc_out [i] ),
-//       .T  ( ~spi_sd_en     [i] )
-//     );
-//   end
-// `endif
-// `endif
 
   //////////////////
   // I2C Adaption //
@@ -644,10 +550,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
 
   assign boot_mode = vio_boot_mode_sel ? vio_boot_mode : boot_mode_i;
 
-  // assign uart_tx_o_cp2108 = vio_uart_sel ? uart_tx_o : '0;
-  // assign uart_tx_o_gpio   = vio_uart_sel ? '0 : uart_tx_o;
-  // assign uart_rx_i        = vio_uart_sel ? uart_rx_i_cp2108 : uart_rx_i_gpio;
-
   assign uart_tx_o_gpio   = uart_tx_o;
   assign uart_rx_i        = uart_rx_i_gpio;
 
@@ -661,17 +563,6 @@ module cheshire_top_xilinx import cheshire_pkg::*; #(
       cnt_led <= 0;
     end
   end
-
-// IBUFDS_DIFF_OUT #(
-//   .DIFF_TERM("TRUE"),   // Differential Termination, "TRUE"/"FALSE"
-//   .IBUF_LOW_PWR("FALSE"), // Low power="TRUE", Highest performance="FALSE"
-//   .IOSTANDARD("LVDS_25") // Specify the input I/O standard
-// ) IBUFDS_DIFF_OUT_inst (
-//   .O(clk_buf_p),   // Buffer diff_p output
-//   .OB(clk_buf_n), // Buffer diff_n output
-//   .I(sys_clk_p),   // Diff_p buffer input (connect directly to top-level port)
-//   .IB(sys_clk_n)  // Diff_n buffer input (connect directly to top-level port)
-// );
 
 IBUFDS #(
   .IBUF_LOW_PWR ("FALSE")

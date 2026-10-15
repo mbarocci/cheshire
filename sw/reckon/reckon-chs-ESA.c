@@ -1,3 +1,9 @@
+// Copyright 2026 Michelangelo Barocci, Politecnico di Torino.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Michelangelo Barocci <michelangelo.barocci@polito.it>
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -19,7 +25,7 @@
 #define ON  true
 #define OFF false
 
-#define N_EPOCHS 20
+#define N_EPOCHS 50
 #define N_SAMPLES 150
 
 #define TRAIN 7
@@ -33,7 +39,9 @@
 
 int main() {
 
-    printf("[RISCV] Starting the experiment...\n\r");
+    printf("[RISCV] Source loaded successfully to Cheshire SoC\n\r");
+    printf("[RISCV] NSAMP %d NEPOCHS %d\n\r", N_SAMPLES, N_EPOCHS);
+    
     dif_spi_host_t chs_spi = {.base_addr = SPI_BASE_ADDR};
     dif_spi_host_config_t chs_spi_config;
     // volatile bool ready = false;
@@ -56,7 +64,7 @@ int main() {
     mmio_region_write32(SPI_BASE_ADDR, SPI_HOST_INTR_ENABLE_REG_OFFSET, 0);
 
     /*STEP 3: ENABLE THE IP*/
-    printf("[RISCV] Enabling SPI peripheral...");
+    printf("[RISCV] Enabling SPI peripheral...\n\r");
 
     volatile uint32_t control_reg = mmio_region_read32(SPI_BASE_ADDR, SPI_HOST_CONTROL_REG_OFFSET);
     mmio_region_write32(SPI_BASE_ADDR, SPI_HOST_CONTROL_REG_OFFSET, bitfield_bit32_write(control_reg, SPI_HOST_CONTROL_SW_RST_BIT, true));
@@ -66,7 +74,7 @@ int main() {
 
     mmio_region_write32(SPI_BASE_ADDR, SPI_HOST_CSID_REG_OFFSET,0);
 
-    printf("[RISCV] Configuring the accelerator via SPI...\n\r");
+    printf("[RISCV] Configuring the accelerator via SPI - Writing %d parameters\n\r", NPARAM_RECKON);
 
     /*--OPENING SPI_EN_CONF--*/
     
@@ -144,7 +152,7 @@ int main() {
             for (int p2 = 0; p2 < 4; p2++) {
                 spi_data |= ((uint32_t)winp[n][p1+p2] & 0x000000FF) << (p2*8);
             }
-            // printf("Data #%d to write: %08X\n\r", p1, spi_data);
+            
             rck_write_txfifo_byteorder(spi_data);
         }
         spi_data = 0;
@@ -153,12 +161,11 @@ int main() {
             for (int r1=0;r1<(N_REC_NEUR & 0x3);r1++) {
                 spi_data |= ((uint32_t)winp[n][r1+p1] & 0x000000FF) << (r1*8);
             }
-            // printf("Data #%d to write: %08X\n\r", p1+1, spi_data);
             rck_write_txfifo_byteorder(spi_data);
         }
         command_reg = rck_gen_spi_cmd(4+num_rw*4);
         mmio_region_write32(SPI_BASE_ADDR, SPI_HOST_COMMAND_REG_OFFSET, command_reg);
-        // printf("Writing neuron %d...\n\r", n);
+        
         while(!wait_for_ready(SPI_BASE_ADDR, SPI_HOST_STATUS_REG_OFFSET, SPI_HOST_STATUS_TXEMPTY_BIT));
     }
 
@@ -236,9 +243,8 @@ int main() {
     rck_write_axirf(N_EPOCH_ADD,    N_EPOCHS);
     rck_write_axirf(N_SAMPLES_ADD,  N_SAMPLES);
 
-    // printf("Starting the experiment %08X\n\r", rck_read_axirf(TEST_REG));
-
-    printf("[RISCV] Starting the experiment...\n\r");
+	printf("[RISCV] Ready to run the RSNN on ReckOn - %d - %d - %d Network\n\r", N_INP_NEUR, N_REC_NEUR, N_OUT_NEUR);
+    printf("[RISCV] Starting the experiment on %d epochs...\n\r", N_EPOCHS);
 
     uint32_t count0_config = 0;
     count0_config |= (1 << 1) | (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7);
@@ -246,7 +252,7 @@ int main() {
     rck_set_counter_conf(0, count0_config);
     uint32_t counter0_value[N_EPOCHS*2];
     for (int i = 0; i < N_EPOCHS; i++) {
-        printf("[RISCV] Epoch %d starting...\n\r")
+        printf("[RISCV] Epoch %d starting...\n\r", i+1);
 
         rck_write_axirf(DO_EPROP_ADD,   TRAIN);
         rck_write_axirf(TEST_gpio,       0);
@@ -268,19 +274,20 @@ int main() {
 
         rck_wait_for_signal(EPOCH_DONE_REG);
 
-        printf("[RISCV] Epoch %d Train/Val done.\n\r");
         inference_val[i] = rck_read_accuracy();
         counter0_value[2*i+1] = rck_get_counter_value(0);
-        
-        rck_toggle_signal(STOP_gpio, 1);
+
+        printf("[RISCV] Epoch %d Train/Val done.\n\r------------------------\n\r", i+1);
+
+        rck_toggle_signal(STOP_gpio, 1);  
     } 
 
     uint32_t avg_train=0, avg_val=0;
     for (int i = 0; i < N_EPOCHS; i++) {
         avg_train += counter0_value[2*i];
         avg_val   += counter0_value[2*i+1];
-    }
-    avg_train = avg_train / N_EPOCHS;
+    }  
+    avg_train = avg_train / N_EPOCHS; 
     avg_val   = avg_val / N_EPOCHS;
 
     printf("[RISCV] TRAINACC IN %d EPOCHS:", N_EPOCHS);
@@ -290,15 +297,15 @@ int main() {
     }
     printf("\n\r");
 
-    printf("[RISCV] VALACC IN %d EPOCHS:", N_EPOCHS);
+    printf("[RISCV] VALACC IN %d EPOCHS:", N_EPOCHS); 
     
     for (int i = 0; i < N_EPOCHS; i++) {
         printf(" %u", inference_val[i]);
     }
     printf("\n\r");
 
-    printf("[RISCV] Average nr. of cycles during training   = %u\n\r", avg_train);
-    printf("[RISCV] Average nr. of cycles during validation = %u\n\r", avg_val);
+//    printf("[RISCV] Average nr. of cycles during training   = %u\n\r", avg_train);
+//    printf("[RISCV] Average nr. of cycles during validation = %u\n\r", avg_val);
     printf("[RISCV] END\n\r");
     return 0;
 }

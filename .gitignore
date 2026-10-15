@@ -67,3 +67,5 @@ sw/reckon/dataset/
 sw/power/
 BITFILE-ILA/
 BITFILE-NO-ILA/
+target/xilinx/constraints/aupzu3.xdc
+cheshire.zcu102.log

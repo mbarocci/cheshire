@@ -5,6 +5,7 @@
 # Nicole Narr <narrn@student.ethz.ch>
 # Christopher Reinwardt <creinwar@student.ethz.ch>
 # Paul Scheffler <paulsc@iis.ee.ethz.ch>
+# Modified 2026 by Michelangelo Barocci, Politecnico di Torino <michelangelo.barocci@polito.it>
 
 # Override this as needed
 CHS_SW_GCC_BINROOT ?= $(dir $(shell which riscv64-unknown-elf-gcc))

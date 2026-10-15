@@ -1,3 +1,9 @@
+// Copyright 2026 Michelangelo Barocci, Politecnico di Torino.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Michelangelo Barocci <michelangelo.barocci@polito.it>
+
 #include <stdio.h>
 #include <stdlib.h>
 

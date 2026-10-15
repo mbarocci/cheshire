@@ -1,3 +1,9 @@
+// Copyright 2026 Michelangelo Barocci, Politecnico di Torino.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Michelangelo Barocci <michelangelo.barocci@polito.it>
+
 #define NPARAM_RECKON 63
 
 #define N_INP_NEUR 6
@@ -7,6 +13,10 @@
 #define KAPPA      124
 #define ALPHALSB   2608
 #define THRESHOLD  1000
+
+#define LR_WINP 3
+#define LR_WREC 3
+#define LR_WOUT 3
 
 uint32_t volatile reckon_spi_conf[NPARAM_RECKON*2] = {
     0x00010008, 0x00000001, // RST_MODE
@@ -48,11 +58,11 @@ uint32_t volatile reckon_spi_conf[NPARAM_RECKON*2] = {
     0x0001004D, 0x00000000, // H_3
     0x0001004E, 0x00000001, // H_4
     0x0001004F, 0x00000000, // LR_R_WINP
-    0x00010050, 0x00000006, // LR_P_WINP
+    0x00010050, LR_WINP, // LR_P_WINP
     0x00010051, 0x00000000, // LR_R_WREC
-    0x00010052, 0x00000006, // LR_P_WREC
+    0x00010052, LR_WREC, // LR_P_WREC
     0x00010053, 0x00000000, // LR_R_WOUT
-    0x00010054, 0x00000006, // LR_P_WOUT
+    0x00010054, LR_WOUT, // LR_P_WOUT
     0x00010055, 0x0000F0F0, // SEED_INP
     0x00010056, 0x0000F1F1, // SEED_REC
     0x00010057, 0x0000F2F2, // SEED_OUT
